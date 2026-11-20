@@ -30,7 +30,8 @@ for (const p of site.allPaths()) {
 // Practice admin: any password works, and changes stay in the browser.
 const rel = (html) => html.replace(/(href|src)="\/(?!\/)/g, '$1="');
 fs.writeFileSync(path.join(OUT, "admin-login.html"),
-  rel(loginPage()).replace('action="/admin/login"', 'action="admin.html"').replace('method="post"', 'method="get"').replace('href="/"', 'href="index.html"'));
+  rel(loginPage()).replace('action="/admin/login"', 'action="admin.html"').replace('method="post"', 'method="get"').replace('href="/"', 'href="index.html"')
+    .replace("</body>", '  <script>document.querySelector("form").addEventListener("submit", (e) => { e.preventDefault(); location.href = "admin.html"; });</script>\n</body>'));
 fs.writeFileSync(path.join(OUT, "admin.html"),
   rel(adminPage()).replace('<script type="module"', '<script>window.SB_DEMO = true;</script>\n  <script type="module"'));
 fs.writeFileSync(path.join(OUT, "demo-content.json"), JSON.stringify(content));
