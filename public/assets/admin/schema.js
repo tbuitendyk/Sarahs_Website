@@ -36,6 +36,7 @@ export const PAGE_FIELDS = [
   { key: "body", label: "Page text", type: "rich", help: RICH_HELP },
   { key: "centered", label: "Centre the text", type: "boolean" },
   { key: "signup", label: "Show the newsletter sign-up form on this page", type: "boolean" },
+  { key: "unlock_box", label: "Show the “Already a subscriber?” password box (it opens the subscriber stories page chosen under Newsletter)", type: "boolean" },
   {
     key: "book_list", label: "Book list on this page", type: "select",
     choices: [{ value: "none", label: "No book list" }, ...LIST_CHOICES],
@@ -157,6 +158,8 @@ export const SECTIONS = [
     fields: [
       { key: "subscriber_password", label: "Subscriber password", type: "string", help: "Opens every page and story marked “Subscribers only”. Put it in the email Kit sends when someone confirms, or in your newsletters. If you change it, everyone needs the new one. Capital letters don’t matter. Until a password is set, subscriber pages stay closed." },
       { key: "locked_message", label: "Message on locked pages", type: "rich" },
+      { key: "subscriber_page", label: "Subscriber stories page (its web address name)", type: "slug", help: "The page the “Already a subscriber?” box opens, e.g. subscriber-stories-iud5ltq5." },
+      { key: "unlock_prompt", label: "Words above the “Already a subscriber?” password box", type: "rich" },
       { key: "heading", label: "Form heading", type: "string" },
       { key: "text", label: "Form text", type: "rich" },
       { key: "picture", label: "Picture on the form", type: "image" },

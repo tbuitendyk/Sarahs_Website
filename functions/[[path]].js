@@ -165,10 +165,14 @@ async function unlock(request, env) {
   if (request.method !== "POST") return Response.redirect(new URL("/", url), 303);
   let form;
   try { form = await request.formData(); } catch { form = new FormData(); }
-  // Only go back to a page on this site.
-  let next = String(form.get("next") || "/");
-  if (!next.startsWith("/") || next.startsWith("//") || next.includes("\\")) next = "/";
-  const back = (flag) => new Response(null, { status: 303, headers: { location: flag ? `${next}?${flag}=1` : next } });
+  // Only go to pages on this site. "next" is where the password leads; "back" is where to show a mistake.
+  const local = (v, fallback) => {
+    v = String(v || "");
+    return v.startsWith("/") && !v.startsWith("//") && !v.includes("\\") ? v : fallback;
+  };
+  const next = local(form.get("next"), "/");
+  const retry = local(form.get("back"), next);
+  const back = (flag) => new Response(null, { status: 303, headers: { location: `${retry}?${flag}=1` } });
 
   const ip = auth.clientAddress(request);
   if (await auth.tooManyTries(env, ip, "subtries")) return back("wait");

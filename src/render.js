@@ -341,6 +341,36 @@ ${this.footer(p)}</body>
 `;
   }
 
+  // The page the "Already a subscriber?" box opens (set under Newsletter; a page's web address name).
+  subscriberPage() {
+    const want = slugify(text(this.newsletter.subscriber_page));
+    return this.pages.find((pg) => pg.slug === want) || this.pages.find((pg) => truthy(pg.subscribers_only)) || null;
+  }
+
+  // "Already a subscriber?" box for public pages. A subscriber who already entered the password gets a button instead.
+  unlockBox(currentPath, opts = {}) {
+    const target = this.subscriberPage();
+    if (!target || !this.subscriberPassword()) return "";
+    const href = `{P}${target.slug}.html`;
+    const prompt = markdown(text(this.newsletter.unlock_prompt) || "Already a subscriber? Enter the subscriber password from your newsletter email to read the stories.", "{P}");
+    if (opts.subscriber) {
+      return `<div class="lock lock-public">\n  <div class="btn-row btn-row-center"><a class="btn" href="${href}">Open the subscriber stories</a></div>\n</div>`;
+    }
+    const err = opts.error ? `\n  <p class="lock-error" role="alert">${esc(opts.error)}</p>` : "";
+    return `<div class="lock lock-public">
+  ${prompt}${err}
+  <form class="lock-form" method="post" action="{P}subscribers/unlock">
+    <input type="hidden" name="next" value="/${esc(target.slug)}.html">
+    <input type="hidden" name="back" value="${esc(currentPath)}">
+    <label for="sub-password">Subscriber password</label>
+    <div class="lock-row">
+      <input id="sub-password" name="password" type="password" autocomplete="current-password" required>
+      <button type="submit" class="btn">Open</button>
+    </div>
+  </form>
+</div>`;
+  }
+
   // Downloads of "Subscribers only" books (e.g. "assets/downloads/words-of-love.docx" or "files/x.pdf").
   isProtectedFile(pathname) {
     const want = String(pathname || "").replace(/^\/+/, "");
@@ -566,6 +596,10 @@ ${indent(feed, 4)}
       const signup = this.signupBox();
       if (signup) parts.push(`\n<section class="section section-signup">\n  <div class="wrap">\n${indent(signup, 4)}\n  </div>\n</section>`);
     }
+    if (truthy(pg.unlock_box)) {
+      const box = this.unlockBox(opts.pathname, opts);
+      if (box) parts.push(`\n<section class="section section-unlock">\n  <div class="wrap">\n${indent(box, 4)}\n  </div>\n</section>`);
+    }
     if (key) {
       const heading = text(pg.book_list_heading);
       const alt = bodyMd ? " section-alt" : "";
@@ -646,7 +680,7 @@ ${indent(content + extra, 8)}
       if (bk) return { status: 200, html: this.book_(bk, p, lockOpts), locked: truthy(bk.subscribers_only) };
     } else if (/^[a-z0-9-]+$/.test(path)) {
       const pg = this.pages.find((x) => x.slug === path);
-      if (pg) return { status: 200, html: this.page_(pg, p, lockOpts), locked: truthy(pg.subscribers_only) };
+      if (pg) return { status: 200, html: this.page_(pg, p, lockOpts), locked: truthy(pg.subscribers_only) || truthy(pg.unlock_box) };
     }
     return { status: 404, html: this.notFound_(p) };
   }

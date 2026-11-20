@@ -55,12 +55,12 @@ KV key `content` = `{ data, version, savedAt }`, where `data` has:
 - `site`: name, tagline, author, email, description, copyright
 - `newsletter`:
   - the Kit form: `kit_form_id`, `kit_uid`, heading, text, picture, placeholder, button, small_print, success_message, subscribed_message
-  - `subscriber_password` and `locked_message` for the subscriber lock
+  - `subscriber_password`, `locked_message`, `subscriber_page` (slug the "Already a subscriber?" box opens) and `unlock_prompt` for the subscriber lock
 - `home`: hero, recent release, about, reviews, newsletter
 - `contact`
 - `progress`: title, eyebrow and `items` (each with `show_bar` and `percent` 0–100)
 - `blog`: posts with title, date (yyyy-mm-dd) and body
-- `pages`: title, slug, menu (`main`, `under-my-books`, `no`), menu_position, body, book_list, signup, subscribers_only, hidden…
+- `pages`: title, slug, menu (`main`, `under-my-books`, `no`), menu_position, body, book_list, signup, unlock_box, subscribers_only, hidden…
 - `books`: title, id, label, cover, buy, show_on[], card_text, description, download, subscribers_only, hidden…
 - `home.newsletter.show_signup` and `contact.show_signup` place the sign-up form.
 
@@ -79,6 +79,7 @@ KV key `content` = `{ data, version, savedAt }`, where `data` has:
 - Downloads of subscriber books (`/assets/downloads/*` and `/files/*`) also need the cookie. That's why `public/_routes.json` sends `/assets/downloads/*` through the function.
 - Locked responses are `private, no-store` and `noindex`.
 - With no subscriber password set, locked pages say "This page isn't open yet."
+- Pages with `unlock_box` show an "Already a subscriber?" password box. It posts `next` (the subscriber page) and `back` (this page), so a wrong password shows the error where it was typed. Once unlocked, the box becomes an "Open the subscriber stories" button. These pages vary per visitor, so they are `private, no-store`. The public Short Stories page has it.
 
 Rich-text fields are Markdown: `##` heading, `###` big line, `>` quote (verse style when its last line is a Bible reference such as "John 1:5"), lists, `**bold**`, `*italic*`, links.
 

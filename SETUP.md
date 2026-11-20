@@ -61,6 +61,8 @@ until a subscriber password is chosen.
 1. In the admin, open **Newsletter** and type a **Subscriber password**. Save.
 2. In Kit, put that password, and the hidden page's address, in the email new subscribers
    get: either the confirmation email or your first welcome email.
+   - Subscribers can also type the password into the "Already a subscriber?" box on the
+     public Short Stories for Subscribers page, which then takes them to the stories.
    - The address is `https://<your-project-name>.pages.dev/subscriber-stories-iud5ltq5.html`.
 3. To change the password later, change it in the admin, then put the new one in your next
    newsletter. Everyone then needs the new password.

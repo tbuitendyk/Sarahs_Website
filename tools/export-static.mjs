@@ -42,16 +42,25 @@ for (const p of site.allPaths()) {
   if (r.locked) locked.push(p);
   write(p, practice(r.html, p));
 }
-// Locked pages: the password box opens the unlocked copy (any password, preview only).
+// Locked pages get an unlocked copy; links between locked pages point at each other's copies.
 for (const p of locked) {
-  const base = path.basename(p);
-  let lockedHtml = fs.readFileSync(path.join(OUT, p), "utf8")
-    .replace(/<form class="lock-form" method="post" action="[^"]*">/, `<form class="lock-form" method="get" action="${unlockedName(base)}">`)
-    .replace("</body>", `<script>document.querySelector(".lock-form").addEventListener("submit", function (e) { e.preventDefault(); location.href = "${unlockedName(base)}"; });</script>\n</body>`);
-  write(p, lockedHtml);
   let open = practice(site.render("/" + p, { subscriber: true }).html, p);
   for (const q of locked) open = open.split(`/${path.basename(q)}"`).join(`/${unlockedName(path.basename(q))}"`).split(`"${q}"`).join(`"${unlockedName(q)}"`);
   write(unlockedName(p), open);
+}
+// Every password box (on locked pages and "Already a subscriber?" boxes) opens the unlocked copy
+// of the page it leads to, whatever is typed (preview only).
+for (const p of site.allPaths()) {
+  let html = fs.readFileSync(path.join(OUT, p), "utf8");
+  if (!html.includes('class="lock-form"')) continue;
+  const next = (html.match(/<input type="hidden" name="next" value="\/([^"]*)">/) || [])[1];
+  if (!next || !locked.includes(next)) continue;
+  const up = "../".repeat(p.split("/").length - 1);
+  const target = up + unlockedName(next);
+  html = html
+    .replace(/<form class="lock-form" method="post" action="[^"]*">/, `<form class="lock-form" method="get" action="${target}">`)
+    .replace("</body>", `<script>document.querySelector(".lock-form").addEventListener("submit", function (e) { e.preventDefault(); location.href = "${target}"; });</script>\n</body>`);
+  write(p, html);
 }
 fs.mkdirSync(path.join(OUT, "assets", "preview"), { recursive: true });
 fs.copyFileSync(path.join(ROOT, "tools", "preview", "kit-practice.js"), path.join(OUT, "assets", "preview", "kit-practice.js"));

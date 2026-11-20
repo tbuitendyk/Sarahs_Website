@@ -21,7 +21,9 @@ export default {
     "kit_form_id": "10220250",
     "kit_uid": "ab3680b7b5",
     "subscriber_password": "",
-    "locked_message": "This page is for newsletter subscribers. Please enter the subscriber password from your newsletter email."
+    "locked_message": "This page is for newsletter subscribers. Please enter the subscriber password from your newsletter email.",
+    "subscriber_page": "subscriber-stories-iud5ltq5",
+    "unlock_prompt": "Already a subscriber? Enter the subscriber password from your newsletter email to read the stories."
   },
   "home": {
     "hero": {
@@ -108,7 +110,8 @@ export default {
       "hidden": false,
       "description": "About Sarah Buitendyk: a young author of clean contemporary, suspense and fantasy with romance, writing for God’s glory from a small farm in Mexico.",
       "signup": false,
-      "subscribers_only": false
+      "subscribers_only": false,
+      "unlock_box": false
     },
     {
       "title": "My Books",
@@ -127,7 +130,8 @@ export default {
       "hidden": false,
       "description": "Books and anthologies by Sarah Buitendyk.",
       "signup": false,
-      "subscribers_only": false
+      "subscribers_only": false,
+      "unlock_box": false
     },
     {
       "title": "IGS: Files",
@@ -146,7 +150,8 @@ export default {
       "hidden": false,
       "description": "IGS: Files, a series by Sarah Buitendyk. One team. Three romances. Four stories.",
       "signup": false,
-      "subscribers_only": false
+      "subscribers_only": false,
+      "unlock_box": false
     },
     {
       "title": "Anthologies",
@@ -165,7 +170,8 @@ export default {
       "hidden": false,
       "description": "Anthologies featuring stories by Sarah Buitendyk.",
       "signup": false,
-      "subscribers_only": false
+      "subscribers_only": false,
+      "unlock_box": false
     },
     {
       "title": "Short Stories for Subscribers",
@@ -184,7 +190,8 @@ export default {
       "hidden": false,
       "description": "Short stories by Sarah Buitendyk for email subscribers.",
       "signup": true,
-      "subscribers_only": false
+      "subscribers_only": false,
+      "unlock_box": true
     },
     {
       "title": "Short Stories for Subscribers",
@@ -203,7 +210,8 @@ export default {
       "hidden": true,
       "description": "Short stories for Sarah Buitendyk’s email subscribers.",
       "signup": false,
-      "subscribers_only": true
+      "subscribers_only": true,
+      "unlock_box": false
     }
   ],
   "books": [
