@@ -73,6 +73,7 @@ export class Site {
     this.settings = obj(c.site);
     this.home = obj(c.home);
     this.contact = obj(c.contact);
+    this.newsletter = obj(c.newsletter);
     this.progress = c.progress;
     this.blog = arr(c.blog);
     this.pages = [];
@@ -195,6 +196,7 @@ ${emailHtml}      <p class="copyright">${esc(text(this.settings.copyright))}</p>
     description = description || text(this.settings.description);
     const fonts = (FONTS_BASE + (heroFonts ? FONTS_HERO : "")).replace(/&/g, "&amp;");
     const robots = noindex ? '  <meta name="robots" content="noindex, nofollow">\n' : "";
+    const kit = this.usedSignup ? '\n  <script src="https://f.convertkit.com/ckjs/ck.5.js" defer></script>' : "";
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -209,7 +211,7 @@ ${robots}  <link rel="icon" href="${p}assets/images/favicon-32.png" sizes="32x32
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fonts}&amp;display=swap">
   <link rel="stylesheet" href="${p}assets/css/style.css">
   <script>document.documentElement.className += " js";</script>
-  <script src="${p}assets/js/site.js" defer></script>
+  <script src="${p}assets/js/site.js" defer></script>${kit}
 </head>
 <body>
 ${this.header(p, current, section)}
@@ -262,6 +264,87 @@ ${this.footer(p)}</body>
     const shown = this.books.filter((b) => b.lists.includes(key));
     if (!shown.length) return '<p class="coming-soon">Coming soon…</p>';
     return '<div class="book-grid">\n' + indent(shown.map((b) => this.bookCard(b)).join("\n\n"), 2) + "\n</div>";
+  }
+
+  // ---------------------------------------------------------------- newsletter (Kit)
+  // The sign-up form keeps Kit's own markup and script (ck.5.js), so Kit's success message
+  // and "already subscribed" message work as set up in Kit; the site's CSS styles it.
+  signupBox({ heading = true } = {}) {
+    const n = this.newsletter;
+    const formId = text(n.kit_form_id).replace(/\D/g, "");
+    const uid = text(n.kit_uid).replace(/[^a-z0-9]/gi, "");
+    if (!formId || !uid) return "";
+    this.usedSignup = true;
+    const options = {
+      settings: {
+        after_subscribe: { action: "message", success_message: text(n.success_message) || "Thank you for signing up.", redirect_url: "" },
+        analytics: { google: null, fathom: null, facebook: null, segment: null, pinterest: null, sparkloop: null, googletagmanager: null },
+        modal: { trigger: "timer", scroll_percentage: null, timer: 5, devices: "all", show_once_every: 15 },
+        powered_by: { show: true, url: "https://kit.com/features/forms?utm_campaign=poweredby&utm_content=form&utm_medium=referral&utm_source=dynamic" },
+        recaptcha: { enabled: false },
+        // Kit puts this message in with innerHTML, so it is escaped here.
+        return_visitor: text(n.subscribed_message)
+          ? { action: "custom_content", custom_content: esc(text(n.subscribed_message)) }
+          : { action: "show", custom_content: "" },
+        slide_in: { display_in: "bottom_right", trigger: "timer", scroll_percentage: null, timer: 5, devices: "all", show_once_every: 15 },
+        sticky_bar: { display_in: "top", trigger: "timer", scroll_percentage: null, timer: 5, devices: "all", show_once_every: 15 },
+      },
+      version: "5",
+    };
+    const parts = ['<div class="signup">'];
+    if (text(n.picture)) parts.push(`  <img class="signup-picture" src="${esc(assetUrl(n.picture, "{P}"))}" alt="" width="349" height="303">`);
+    if (heading && text(n.heading)) parts.push(`  <h2 class="signup-heading">${esc(n.heading)}</h2>`);
+    if (text(n.text)) parts.push(`  <div class="signup-text">${markdown(n.text, "{P}")}</div>`);
+    parts.push(
+      `  <form action="https://app.kit.com/forms/${formId}/subscriptions" class="seva-form formkit-form signup-form" method="post" ` +
+      `data-sv-form="${formId}" data-uid="${uid}" data-format="inline" data-version="5" data-options="${esc(JSON.stringify(options))}">`,
+      '    <ul class="formkit-alert formkit-alert-error" data-element="errors" data-group="alert"></ul>',
+      '    <div data-element="fields" class="seva-fields formkit-fields">',
+      `      <div class="formkit-field"><input class="formkit-input" name="email_address" type="email" required autocomplete="email" aria-label="Email address" placeholder="${esc(text(n.placeholder) || "Email Address")}"></div>`,
+      `      <button data-element="submit" class="formkit-submit"><span class="formkit-spinner"><span></span><span></span><span></span></span><span class="formkit-label">${esc(text(n.button) || "Subscribe")}</span></button>`,
+      "    </div>",
+      text(n.small_print) ? `    <p class="formkit-guarantee" data-element="guarantee">${esc(n.small_print)}</p>` : "",
+      '    <p class="formkit-powered-by-convertkit-container"><a href="https://kit.com/features/forms?utm_campaign=poweredby&amp;utm_content=form&amp;utm_medium=referral&amp;utm_source=dynamic" data-element="powered-by" class="formkit-powered-by-convertkit" target="_blank" rel="nofollow noopener">Built with Kit</a></p>',
+      "  </form>",
+      "</div>");
+    return parts.filter(Boolean).join("\n");
+  }
+
+  subscriberPassword() { return text(this.newsletter.subscriber_password); }
+
+  // Shown instead of a "Subscribers only" page or story until the subscriber password is entered.
+  lockedView(title, eyebrow, pathname, error) {
+    const n = this.newsletter;
+    const message = markdown(text(n.locked_message) || "This page is for newsletter subscribers. Please enter the subscriber password from your newsletter email.", "{P}");
+    const form = this.subscriberPassword()
+      ? `<form class="lock-form" method="post" action="{P}subscribers/unlock">
+    <input type="hidden" name="next" value="${esc(pathname)}">
+    <label for="sub-password">Subscriber password</label>
+    <div class="lock-row">
+      <input id="sub-password" name="password" type="password" autocomplete="current-password" required>
+      <button type="submit" class="btn">Open</button>
+    </div>
+  </form>`
+      : '<p class="coming-soon">This page isn’t open yet.</p>';
+    const err = error ? `\n  <p class="lock-error" role="alert">${esc(error)}</p>` : "";
+    const signup = this.signupBox();
+    return this.pageHero(title, eyebrow) + `
+
+<section class="section">
+  <div class="wrap">
+    <div class="lock">
+      ${message}${err}
+      ${form}
+    </div>${signup ? "\n" + indent(`<div class="lock-signup">\n${indent(signup, 2)}\n</div>`, 4) : ""}
+  </div>
+</section>
+`;
+  }
+
+  // Downloads of "Subscribers only" books (e.g. "assets/downloads/words-of-love.docx" or "files/x.pdf").
+  isProtectedFile(pathname) {
+    const want = String(pathname || "").replace(/^\/+/, "");
+    return this.books.some((b) => truthy(b.subscribers_only) && text(b.download).replace(/^\/+/, "") === want);
   }
 
   pageHero(title, eyebrow = "", lede = "") {
@@ -342,8 +425,10 @@ ${indent(markdown(ab.text, "{P}"), 8)}
     for (const k of ["reviews", "newsletter"]) {
       const blk = obj(h[k]);
       if (text(blk.title)) {
-        cols.push(`      <div>\n        <h2 class="section-title">${esc(blk.title)}</h2>\n` +
-          `        <div class="coming-soon">${markdown(blk.text, "{P}")}</div>\n      </div>`);
+        const words = text(blk.text) ? `        <div class="coming-soon">${markdown(blk.text, "{P}")}</div>\n` : "";
+        const form = k === "newsletter" && truthy(blk.show_signup) ? this.signupBox({ heading: false }) : "";
+        cols.push(`      <div>\n        <h2 class="section-title">${esc(blk.title)}</h2>\n${words}` +
+          (form ? indent(form, 8) + "\n" : "") + "      </div>");
       }
     }
     const extra = cols.length
@@ -381,12 +466,14 @@ ${recent}${about}${extra}`;
       ? `    <p class="contact-direct">${inline(c.direct_text, "{P}")}<br>\n      <a class="email-big" href="mailto:${esc(email)}">${esc(email)}</a></p>\n`
       : "";
     const heading = text(c.heading) ? `    <h2 class="section-title">${esc(c.heading)}</h2>\n` : "";
+    const signup = truthy(c.show_signup) ? this.signupBox() : "";
+    const top = signup ? indent(`<div class="contact-signup">\n${indent(signup, 2)}\n</div>`, 4) + "\n" : "";
     const title = text(c.title) || "Contact";
     const body = this.pageHero(title) + `
 
 <section class="section">
   <div class="wrap wrap-narrow center">
-${note}${heading}    ${markdown(c.text, "{P}")}
+${note}${top}${heading}    ${markdown(c.text, "{P}")}
 ${btn}${direct}  </div>
 </section>
 `;
@@ -452,8 +539,12 @@ ${indent(feed, 4)}
     return this.shell({ p, title: "Blog", body, current: "blog", description: "News and writing updates from author Sarah Buitendyk." });
   }
 
-  page_(pg, p) {
+  page_(pg, p, opts = {}) {
     const section = squash(pg.menu).includes("under") ? BOOKS_PAGE : null;
+    if (truthy(pg.subscribers_only) && !opts.subscriber) {
+      return this.shell({ p, title: pg.title, body: this.lockedView(pg.title, text(pg.eyebrow), opts.pathname, opts.error),
+        current: pg.slug, section, description: text(pg.description), noindex: true });
+    }
     const parts = [this.pageHero(pg.title, text(pg.eyebrow), text(pg.intro))];
     const key = text(pg.book_list) ? listKey(pg.book_list) : null;
     const bodyMd = text(pg.body);
@@ -471,6 +562,10 @@ ${indent(feed, 4)}
       }
       parts.push(`\n<section class="section">\n  <div class="wrap">\n${indent(inner, 4)}\n  </div>\n</section>`);
     }
+    if (truthy(pg.signup)) {
+      const signup = this.signupBox();
+      if (signup) parts.push(`\n<section class="section section-signup">\n  <div class="wrap">\n${indent(signup, 4)}\n  </div>\n</section>`);
+    }
     if (key) {
       const heading = text(pg.book_list_heading);
       const alt = bodyMd ? " section-alt" : "";
@@ -481,7 +576,11 @@ ${indent(feed, 4)}
       description: text(pg.description), noindex: pg.hidden });
   }
 
-  book_(bk, p) {
+  book_(bk, p, opts = {}) {
+    if (truthy(bk.subscribers_only) && !opts.subscriber) {
+      return this.shell({ p, title: bk.title, body: this.lockedView(bk.title, text(bk.label), opts.pathname, opts.error),
+        current: `book-${bk.id}`, section: BOOKS_PAGE, noindex: true });
+    }
     let cover = this.cover(bk);
     const buy = linkUrl(bk.buy, "{P}");
     cover = buy && !text(bk.download)
@@ -529,7 +628,10 @@ ${indent(content + extra, 8)}
 
   // -- addresses ---------------------------------------------------------------
   // Returns { status, html } for a path like "/", "/about.html", "/books/igs-1.html".
-  render(pathname) {
+  // opts.subscriber: the visitor entered the subscriber password. opts.error: message for the lock screen.
+  render(pathname, opts = {}) {
+    this.usedSignup = false;
+    const lockOpts = { subscriber: !!opts.subscriber, error: opts.error || "", pathname: pathname || "/" };
     let path = decodeURIComponent(pathname || "/");
     const depth = Math.max(0, path.replace(/^\/+/, "").split("/").length - 1);
     const p = "../".repeat(depth);
@@ -541,10 +643,10 @@ ${indent(content + extra, 8)}
     const bm = path.match(/^books\/([a-z0-9-]+)$/);
     if (bm) {
       const bk = this.books.find((b) => b.id === bm[1] && b.has_page);
-      if (bk) return { status: 200, html: this.book_(bk, p) };
+      if (bk) return { status: 200, html: this.book_(bk, p, lockOpts), locked: truthy(bk.subscribers_only) };
     } else if (/^[a-z0-9-]+$/.test(path)) {
       const pg = this.pages.find((x) => x.slug === path);
-      if (pg) return { status: 200, html: this.page_(pg, p) };
+      if (pg) return { status: 200, html: this.page_(pg, p, lockOpts), locked: truthy(pg.subscribers_only) };
     }
     return { status: 404, html: this.notFound_(p) };
   }

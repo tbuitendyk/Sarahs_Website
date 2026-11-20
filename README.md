@@ -13,6 +13,7 @@ Sarah edits everything at **/admin** on the live site (for example
 - pages and the menu
 - the home page, contact page and progress bars
 - pictures and downloads
+- the newsletter sign-up form (from Kit) and the subscriber password that opens the subscriber-only stories
 
 Every save keeps the previous version, so changes can be undone.
 

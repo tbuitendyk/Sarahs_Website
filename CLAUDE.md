@@ -33,9 +33,10 @@ public/                 Static files (Pages output directory)
     editor.js           word-processor text box; converts its HTML to Markdown
     markdown.js         Markdown -> HTML; shared by render.js and the editor
     api.js              calls /api/admin/*; demo mode for previews (window.SB_DEMO)
-  _routes.json          /assets/* is served directly; everything else goes to the function
+  _routes.json          /assets/css|js|images|admin are served directly; everything else (incl. downloads) goes to the function
 tools/dev-server.mjs    Local copy of Cloudflare (Node 18+), with KV kept in .dev/kv.json
 tools/export-static.mjs Saves a static copy of the site plus a practice admin, for previews
+                        (Kit replaced by tools/preview/kit-practice.js; locked pages get *.unlocked.html copies)
 SETUP.md                One-time Cloudflare setup, written for non-developers
 ```
 
@@ -52,12 +53,32 @@ Then open http://localhost:8788 and http://localhost:8788/admin. Use `KV_FILE=me
 KV key `content` = `{ data, version, savedAt }`, where `data` has:
 
 - `site`: name, tagline, author, email, description, copyright
+- `newsletter`:
+  - the Kit form: `kit_form_id`, `kit_uid`, heading, text, picture, placeholder, button, small_print, success_message, subscribed_message
+  - `subscriber_password` and `locked_message` for the subscriber lock
 - `home`: hero, recent release, about, reviews, newsletter
 - `contact`
 - `progress`: title, eyebrow and `items` (each with `show_bar` and `percent` 0–100)
 - `blog`: posts with title, date (yyyy-mm-dd) and body
-- `pages`: title, slug, menu (`main`, `under-my-books`, `no`), menu_position, body, book_list, hidden…
-- `books`: title, id, label, cover, buy, show_on[], card_text, description, download, hidden…
+- `pages`: title, slug, menu (`main`, `under-my-books`, `no`), menu_position, body, book_list, signup, subscribers_only, hidden…
+- `books`: title, id, label, cover, buy, show_on[], card_text, description, download, subscribers_only, hidden…
+- `home.newsletter.show_signup` and `contact.show_signup` place the sign-up form.
+
+## Newsletter (Kit) and the subscriber lock
+
+**Sign-up form.**
+- `Site.signupBox()` renders Kit's own form markup (`data-sv-form`, `data-uid`, `data-options`), and loads `https://f.convertkit.com/ckjs/ck.5.js` on that page only.
+- Kit's script submits to `app.kit.com/forms/<id>/subscriptions`, shows `success_message` in place of the fields, and remembers the sign-up in localStorage (`cksubscribed-<uid>`). On later visits it replaces the form with `subscribed_message`, inserted with innerHTML, so `render.js` escapes it.
+- The site's CSS styles Kit's class names.
+- Never test by submitting to the real Kit form, because that adds a real subscriber. Intercept `app.kit.com` in Playwright instead.
+
+**Subscriber lock.**
+- Pages and books with `subscribers_only` render `lockedView()` until the visitor has entered `newsletter.subscriber_password` at `POST /subscribers/unlock`.
+- Unlocking sets the `__Host-sb_sub` cookie, signed with the admin secret plus the password. Changing the password locks everyone out again.
+- Matching ignores capital letters and surrounding spaces. Wrong tries are limited to 10 per 15 minutes per address (`subtries:`).
+- Downloads of subscriber books (`/assets/downloads/*` and `/files/*`) also need the cookie. That's why `public/_routes.json` sends `/assets/downloads/*` through the function.
+- Locked responses are `private, no-store` and `noindex`.
+- With no subscriber password set, locked pages say "This page isn't open yet."
 
 Rich-text fields are Markdown: `##` heading, `###` big line, `>` quote (verse style when its last line is a Bible reference such as "John 1:5"), lists, `**bold**`, `*italic*`, links.
 
@@ -101,7 +122,7 @@ This writes the site plus `admin-login.html` and `admin.html` (a practice admin 
 
 - **One-time setup isn't done yet** (see `SETUP.md`). The site isn't live, and the WordPress site is still public.
 - **Words of Love has no cover.** The image was missing on WordPress too.
-- **The hidden subscriber page is unlisted, not locked.** Its address is in `defaults.js`, so keep the repo private or change the address in the admin after launch.
+- **The subscriber password isn't set yet.** Until Sarah sets it under Newsletter, subscriber pages say "This page isn't open yet". It goes in Kit's confirmation or welcome email.
 - **The contact form became an email link.** Sarah's original sentence ends "…send a message with the form below."; that part is left off because there's no form.
 - The **newsletter signup** and **reader reviews** sections still say "Coming soon…".
 - **IGS #3 and #4** are placeholders based on "Four stories".

@@ -98,15 +98,54 @@ export function clientAddress(request) {
   return request.headers.get("CF-Connecting-IP") || request.headers.get("X-Forwarded-For") || "local";
 }
 
-export async function tooManyTries(env, ip) {
-  return (Number(await env.SITE.get(`tries:${ip}`)) || 0) >= MAX_TRIES;
+// kind: "tries" for the admin login, "subtries" for the subscriber password.
+export async function tooManyTries(env, ip, kind = "tries") {
+  return (Number(await env.SITE.get(`${kind}:${ip}`)) || 0) >= MAX_TRIES;
 }
 
-export async function recordWrongTry(env, ip) {
-  const n = (Number(await env.SITE.get(`tries:${ip}`)) || 0) + 1;
-  await env.SITE.put(`tries:${ip}`, String(n), { expirationTtl: LOCK_SECONDS });
+export async function recordWrongTry(env, ip, kind = "tries") {
+  const n = (Number(await env.SITE.get(`${kind}:${ip}`)) || 0) + 1;
+  await env.SITE.put(`${kind}:${ip}`, String(n), { expirationTtl: LOCK_SECONDS });
 }
 
-export async function clearTries(env, ip) {
-  await env.SITE.delete(`tries:${ip}`);
+export async function clearTries(env, ip, kind = "tries") {
+  await env.SITE.delete(`${kind}:${ip}`);
+}
+
+// ---------------------------------------------------------------- subscriber password
+// One shared password (set by Sarah in the admin, under Newsletter) opens "Subscribers only"
+// pages, stories and downloads. Capital letters and spaces around it don't matter.
+// The cookie is signed with the site's secret AND the password, so changing the password
+// locks everyone out until they enter the new one.
+
+export const SUB_COOKIE = "__Host-sb_sub";
+const SUB_SECONDS = 60 * 60 * 24 * 365;
+const normal = (pw) => String(pw || "").trim().toLowerCase();
+
+export async function subscriberPasswordMatches(given, expected) {
+  if (!normal(expected) || !normal(given)) return false;
+  const k = crypto.getRandomValues(new Uint8Array(16)).join(",");
+  return sameString(await hmac(k, normal(given)), await hmac(k, normal(expected)));
+}
+
+export async function subscriberCookie(env, password) {
+  const secret = await sessionSecret(env);
+  if (!secret || !normal(password)) return null;
+  const exp = Math.floor(Date.now() / 1000) + SUB_SECONDS;
+  const sig = await hmac(secret, `subscriber|${exp}|${normal(password)}`);
+  // Lax (not Strict) so the page opens when someone arrives from a link in the newsletter email.
+  return `${SUB_COOKIE}=${exp}.${sig}; Max-Age=${SUB_SECONDS}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+}
+
+export async function isSubscriber(request, env, password) {
+  if (!normal(password)) return false;
+  const cookies = request.headers.get("Cookie") || "";
+  const m = cookies.match(new RegExp(`(?:^|;\\s*)${SUB_COOKIE.replace(/[-]/g, "\\-")}=([^;]+)`));
+  if (!m) return false;
+  const [expStr, sig] = m[1].split(".");
+  const exp = Number(expStr);
+  if (!exp || !sig || exp < Date.now() / 1000) return false;
+  const secret = await sessionSecret(env);
+  if (!secret) return false;
+  return sameString(await hmac(secret, `subscriber|${exp}|${normal(password)}`), sig);
 }

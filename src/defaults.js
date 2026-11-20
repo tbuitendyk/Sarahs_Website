@@ -9,6 +9,20 @@ export default {
     "description": "Sarah Buitendyk is a young Christian author of clean contemporary, suspense and fantasy stories with romance woven in.",
     "copyright": "© Sarah Buitendyk. All rights reserved."
   },
+  "newsletter": {
+    "heading": "Newsletter Signup",
+    "text": "Subscribe to get my newsletter with free short stories, updates, and book recommendations.",
+    "picture": "/assets/images/newsletter-logo.jpg",
+    "placeholder": "Email Address",
+    "button": "Subscribe",
+    "small_print": "We respect your privacy. Unsubscribe at any time.",
+    "success_message": "Success! Now check your email to confirm your subscription.",
+    "subscribed_message": "You are already subscribed!",
+    "kit_form_id": "10220250",
+    "kit_uid": "ab3680b7b5",
+    "subscriber_password": "",
+    "locked_message": "This page is for newsletter subscribers. Please enter the subscriber password from your newsletter email."
+  },
   "home": {
     "hero": {
       "welcome": "Welcome to the World of",
@@ -40,17 +54,19 @@ export default {
     },
     "newsletter": {
       "title": "Newsletter Signup",
-      "text": "Coming soon…"
+      "text": "",
+      "show_signup": true
     }
   },
   "contact": {
     "title": "Contact",
     "description": "Get in touch with author Sarah Buitendyk. Questions, comments, or thoughts are welcome.",
-    "note": "**Email list coming soon:**",
+    "note": "",
     "heading": "Send me a Message",
     "text": "Feel free to send a message. Any questions, comments, or thoughts are welcome! I’d be happy to hear from you.",
     "button_label": "Email Sarah",
-    "direct_text": "Or, you can email me directly at:"
+    "direct_text": "Or, you can email me directly at:",
+    "show_signup": true
   },
   "progress": {
     "title": "In Progress",
@@ -90,7 +106,9 @@ export default {
       "book_list_heading": "",
       "centered": false,
       "hidden": false,
-      "description": "About Sarah Buitendyk: a young author of clean contemporary, suspense and fantasy with romance, writing for God’s glory from a small farm in Mexico."
+      "description": "About Sarah Buitendyk: a young author of clean contemporary, suspense and fantasy with romance, writing for God’s glory from a small farm in Mexico.",
+      "signup": false,
+      "subscribers_only": false
     },
     {
       "title": "My Books",
@@ -107,7 +125,9 @@ export default {
       "book_list_heading": "",
       "centered": false,
       "hidden": false,
-      "description": "Books and anthologies by Sarah Buitendyk."
+      "description": "Books and anthologies by Sarah Buitendyk.",
+      "signup": false,
+      "subscribers_only": false
     },
     {
       "title": "IGS: Files",
@@ -124,7 +144,9 @@ export default {
       "book_list_heading": "The Books",
       "centered": false,
       "hidden": false,
-      "description": "IGS: Files, a series by Sarah Buitendyk. One team. Three romances. Four stories."
+      "description": "IGS: Files, a series by Sarah Buitendyk. One team. Three romances. Four stories.",
+      "signup": false,
+      "subscribers_only": false
     },
     {
       "title": "Anthologies",
@@ -141,7 +163,9 @@ export default {
       "book_list_heading": "",
       "centered": false,
       "hidden": false,
-      "description": "Anthologies featuring stories by Sarah Buitendyk."
+      "description": "Anthologies featuring stories by Sarah Buitendyk.",
+      "signup": false,
+      "subscribers_only": false
     },
     {
       "title": "Short Stories for Subscribers",
@@ -153,12 +177,14 @@ export default {
       "intro": "",
       "photo": "",
       "photo_description": "",
-      "body": "This page is for email subscribers.\n\n*Email list coming soon…*",
+      "body": "This page is for email subscribers.",
       "book_list": "none",
       "book_list_heading": "",
       "centered": true,
       "hidden": false,
-      "description": "Short stories by Sarah Buitendyk for email subscribers."
+      "description": "Short stories by Sarah Buitendyk for email subscribers.",
+      "signup": true,
+      "subscribers_only": false
     },
     {
       "title": "Short Stories for Subscribers",
@@ -175,7 +201,9 @@ export default {
       "book_list_heading": "",
       "centered": false,
       "hidden": true,
-      "description": "Short stories for Sarah Buitendyk’s email subscribers."
+      "description": "Short stories for Sarah Buitendyk’s email subscribers.",
+      "signup": false,
+      "subscribers_only": true
     }
   ],
   "books": [
@@ -193,7 +221,8 @@ export default {
       "description": "## Stories include:\n\n- Realizing God wants everyone to be His child, no matter their circumstances\n- A young woman discovering what her ministry is\n- Rediscovering one’s passion in a very unique way\n- A Bible character discovering what it means to follow God\n- Traveling to another country and the hardships of learning to become a missionary\n- Showing someone God’s love even when it is difficult\n- A journey from darkness to peace and forgiveness\n- Learning how God’s love guides one’s footsteps through the hills and valleys of life\n- Bringing a ray of sunshine to injured soldiers\n- A ride on the Titanic\n\n> “And the light shineth in darkness; and the darkness comprehended it not.”\\\n> John 1:5\n\nBooks for Bibles Press presents its first anthology, featuring how God’s love shines even in the darkest places. Ten young authors showcase their talents in thought provoking stories, splashing the pages with rays of light.\n\n> Books for Bibles is an organization dedicated to selling books to buy Bibles for those who might not have easy access to them. When you buy a book, you give a Bible! We have yearly anthologies on a multitude of topics in which any aspiring author may participate. To find out more, please check out our website at [booksforbibles.wordpress.com](https://booksforbibles.wordpress.com).",
       "download": "",
       "download_note": "",
-      "hidden": false
+      "hidden": false,
+      "subscribers_only": false
     },
     {
       "title": "IGS #1",
@@ -208,7 +237,8 @@ export default {
       "description": "IGS #1 is waiting to have draft three started.",
       "download": "",
       "download_note": "",
-      "hidden": false
+      "hidden": false,
+      "subscribers_only": false
     },
     {
       "title": "IGS #2",
@@ -223,7 +253,8 @@ export default {
       "description": "",
       "download": "",
       "download_note": "",
-      "hidden": false
+      "hidden": false,
+      "subscribers_only": false
     },
     {
       "title": "IGS #3",
@@ -238,7 +269,8 @@ export default {
       "description": "",
       "download": "",
       "download_note": "",
-      "hidden": false
+      "hidden": false,
+      "subscribers_only": false
     },
     {
       "title": "IGS #4",
@@ -253,7 +285,8 @@ export default {
       "description": "",
       "download": "",
       "download_note": "",
-      "hidden": false
+      "hidden": false,
+      "subscribers_only": false
     },
     {
       "title": "Words of Love",
@@ -268,7 +301,8 @@ export default {
       "description": "Words of Love is a Biblical Fiction Fantasy story.\n\nBarra is a mother in desperate need of help. Her daughter has been plagued by demons for years, and she and her husband have spent all they can to try and help their daughter.\n\nThey have lost hope. Barra is living in darkness and despair.\n\nIt isn’t until Barra meets a mysterious man named Isoa that she begins to believe, and when she begins to see light.\n\nBarra is the woman who goes to Jesus, who’s daughter was healed.\n\nContent Labels – The daughter is demon possessed, but it’s not described too much.",
       "download": "/assets/downloads/words-of-love.docx",
       "download_note": "Other downloads are currently unavailable.",
-      "hidden": true
+      "hidden": true,
+      "subscribers_only": true
     }
   ]
 };

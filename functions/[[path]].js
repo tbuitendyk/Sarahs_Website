@@ -2,6 +2,7 @@
 //
 //   /, /about.html, /books/igs-1.html ...   website pages, built from the saved content
 //   /files/<name>                           pictures and files uploaded in the admin
+//   /subscribers/unlock                     checks the subscriber password, then goes back to the page
 //   /admin                                  login page, or the editor once logged in
 //   /admin/login, /admin/logout             log in / out
 //   /api/admin/...                          what the editor uses to load and save (login required)
@@ -39,18 +40,32 @@ export async function onRequest(context) {
       return new Response(null, { status: 303, headers: { location: "/admin", "set-cookie": auth.clearCookie() } });
     }
     if (path.startsWith("/api/admin/")) return await api(request, env, path.slice("/api/admin/".length));
+    if (path === "/subscribers/unlock") return await unlock(request, env);
     if (path.startsWith("/files/")) return await serveFile(request, env, path.slice("/files/".length));
 
-    // Real files in public/ (robots.txt, anything under /assets/) are served as they are.
-    if (path.startsWith("/assets/") || (/\.[a-z0-9]+$/i.test(path) && !path.endsWith(".html"))) return context.next();
+    // Real files in public/ (robots.txt, /assets/downloads/...) are served as they are,
+    // except the downloads of "Subscribers only" stories, which need the subscriber password.
+    if (path.startsWith("/assets/") || (/\.[a-z0-9]+$/i.test(path) && !path.endsWith(".html"))) {
+      const locked = await lockedFile(request, env, path);
+      return locked || context.next();
+    }
 
     if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405 });
 
     const { data } = await store.getContent(env);
-    const { status, html } = new Site(data).render(path);
+    const site = new Site(data);
+    const subscriber = await auth.isSubscriber(request, env, site.subscriberPassword());
+    const error = url.searchParams.get("wrong") === "1" ? "That password isn’t right. Please check your newsletter email and try again."
+      : url.searchParams.get("wait") === "1" ? "Too many wrong passwords. Please wait 15 minutes, then try again." : "";
+    const { status, html, locked } = site.render(path, { subscriber, error });
     return new Response(request.method === "HEAD" ? null : html, {
       status,
-      headers: { "content-type": "text/html; charset=utf-8", "cache-control": "no-cache", "x-content-type-options": "nosniff" },
+      headers: {
+        "content-type": "text/html; charset=utf-8",
+        // Subscriber pages must never be kept by a shared cache.
+        "cache-control": locked ? "private, no-store" : "no-cache",
+        "x-content-type-options": "nosniff",
+      },
     });
   } catch (err) {
     console.error(err);
@@ -143,9 +158,48 @@ async function readJson(request) {
   }
 }
 
+// ---------------------------------------------------------------- subscriber password
+
+async function unlock(request, env) {
+  const url = new URL(request.url);
+  if (request.method !== "POST") return Response.redirect(new URL("/", url), 303);
+  let form;
+  try { form = await request.formData(); } catch { form = new FormData(); }
+  // Only go back to a page on this site.
+  let next = String(form.get("next") || "/");
+  if (!next.startsWith("/") || next.startsWith("//") || next.includes("\\")) next = "/";
+  const back = (flag) => new Response(null, { status: 303, headers: { location: flag ? `${next}?${flag}=1` : next } });
+
+  const ip = auth.clientAddress(request);
+  if (await auth.tooManyTries(env, ip, "subtries")) return back("wait");
+  const { data } = await store.getContent(env);
+  const password = new Site(data).subscriberPassword();
+  if (await auth.subscriberPasswordMatches(form.get("password"), password)) {
+    await auth.clearTries(env, ip, "subtries");
+    const cookie = await auth.subscriberCookie(env, password);
+    return new Response(null, { status: 303, headers: { location: next, ...(cookie ? { "set-cookie": cookie } : {}) } });
+  }
+  await auth.recordWrongTry(env, ip, "subtries");
+  return back("wrong");
+}
+
+// A download that belongs to a "Subscribers only" story: show the story's lock screen instead.
+async function lockedFile(request, env, path) {
+  const { data } = await store.getContent(env);
+  const site = new Site(data);
+  if (!site.isProtectedFile(path)) return null;
+  if (await auth.isSubscriber(request, env, site.subscriberPassword())) return null;
+  const book = site.books.find((b) => String(b.download || "").replace(/^\/+/, "") === path.replace(/^\/+/, ""));
+  const target = book && book.has_page ? `/books/${book.id}.html` : "/";
+  return new Response(null, { status: 303, headers: { location: target, "cache-control": "private, no-store" } });
+}
+
 // ---------------------------------------------------------------- uploaded files
 
 async function serveFile(request, env, name) {
+  const locked = await lockedFile(request, env, `/files/${name}`);
+  if (locked) return locked;
+  const isPrivate = new Site((await store.getContent(env)).data).isProtectedFile(`/files/${name}`);
   const file = await store.getFile(env, decodeURIComponent(name));
   if (!file) {
     const { data } = await store.getContent(env);
@@ -153,7 +207,8 @@ async function serveFile(request, env, name) {
   }
   const headers = {
     "content-type": file.metadata.type || "application/octet-stream",
-    "cache-control": "public, max-age=31536000, immutable",
+    // Subscriber downloads must never be kept by a shared cache; everything else can be cached for a year.
+    "cache-control": isPrivate ? "private, no-store" : "public, max-age=31536000, immutable",
     "x-content-type-options": "nosniff",
   };
   if (!store.isImageName(name)) headers["content-disposition"] = `attachment; filename="${name}"`;

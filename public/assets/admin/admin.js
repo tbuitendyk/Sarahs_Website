@@ -325,8 +325,10 @@ function listEditor(arr, cfg, sectionCfg) {
       const lists = Array.isArray(item.show_on) ? item.show_on : String(item.show_on || "").split(/\s*,\s*/).filter(Boolean);
       lists.forEach((l) => out.push(h("span", { class: "badge" }, names[l] || l)));
       if (!lists.length) out.push(h("span", { class: "badge badge-muted" }, "Not on any list"));
+      if (item.subscribers_only === true) out.push(h("span", { class: "badge badge-lock" }, "🔒 Subscribers only"));
     }
     if (sectionCfg?.id === "pages") {
+      if (item.subscribers_only === true) out.push(h("span", { class: "badge badge-lock" }, "🔒 Subscribers only"));
       if (item.hidden === true) out.push(h("span", { class: "badge badge-muted" }, "Hidden"));
       else if (item.menu === "no") out.push(h("span", { class: "badge badge-muted" }, "Not in menu"));
       else out.push(h("span", { class: "badge" }, item.menu === "under-my-books" ? "Under My Books" : "Main menu"));
@@ -358,7 +360,7 @@ function listEditor(arr, cfg, sectionCfg) {
       for (const f of cfg.fields) {
         body.append(renderField(item, f, (key) => {
           if (key === "title") titleEl.textContent = summaryOf(item);
-          if (["show_on", "menu", "hidden", "date"].includes(key)) badgeEl.replaceChildren(...badges(item));
+          if (["show_on", "menu", "hidden", "date", "subscribers_only"].includes(key)) badgeEl.replaceChildren(...badges(item));
         }));
       }
       el.append(body);

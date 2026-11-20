@@ -23,6 +23,7 @@ export const BOOK_FIELDS = [
   { key: "download", label: "Free download file", type: "file", help: "Only for free stories. Shows a Download button instead of Buy the book." },
   { key: "download_note", label: "Note under the download", type: "string" },
   { key: "id", label: "Web address name", type: "slug", help: "Used in the book page’s address, e.g. igs-1 gives books/igs-1.html. Leave empty to make one from the title. Don’t change it once people have the link." },
+  { key: "subscribers_only", label: "Subscribers only: the book’s page and download need the subscriber password (set it under Newsletter)", type: "boolean" },
   { key: "hidden", label: "Keep this book’s page out of search engines (for subscriber-only stories)", type: "boolean" },
 ];
 
@@ -34,6 +35,7 @@ export const PAGE_FIELDS = [
   { key: "photo_description", label: "What the photo shows", type: "string", help: "For people who can’t see pictures, e.g. “Sarah Buitendyk”." },
   { key: "body", label: "Page text", type: "rich", help: RICH_HELP },
   { key: "centered", label: "Centre the text", type: "boolean" },
+  { key: "signup", label: "Show the newsletter sign-up form on this page", type: "boolean" },
   {
     key: "book_list", label: "Book list on this page", type: "select",
     choices: [{ value: "none", label: "No book list" }, ...LIST_CHOICES],
@@ -46,6 +48,7 @@ export const PAGE_FIELDS = [
   },
   { key: "menu_label", label: "Menu wording", type: "string", help: "The words in the menu, if different from the title." },
   { key: "menu_position", label: "Menu position", type: "number", help: "Lower numbers come first. Main menu: Home 10, Blog 20, About 30, Contact 40, In Progress 50, My Books 60. Under My Books: IGS: Files 10, Anthologies 20, Short Stories 30. Use a number in between to fit a page in, e.g. 35." },
+  { key: "subscribers_only", label: "Subscribers only: visitors need the subscriber password to see this page (set it under Newsletter)", type: "boolean" },
   { key: "hidden", label: "Hidden page: not in the menu and kept out of search engines. Only people with the link can open it.", type: "boolean" },
   { key: "slug", label: "Web address name", type: "slug", help: "e.g. “about” gives about.html. Leave empty to make one from the title. Don’t change it once people have the link." },
   { key: "description", label: "Description for search engines", type: "text" },
@@ -111,7 +114,8 @@ export const SECTIONS = [
       ] },
       { key: "newsletter", label: "Newsletter signup", type: "group", fields: [
         { key: "title", label: "Section heading", type: "string" },
-        { key: "text", label: "Text", type: "rich" },
+        { key: "show_signup", label: "Show the sign-up form (its words are under Newsletter)", type: "boolean" },
+        { key: "text", label: "Extra text above the form (optional)", type: "rich" },
       ] },
     ],
   },
@@ -138,12 +142,31 @@ export const SECTIONS = [
     id: "contact", label: "Contact page", kind: "object", key: "contact", pageUrl: () => "/contact.html",
     fields: [
       { key: "title", label: "Page title", type: "string" },
-      { key: "note", label: "Note in the box at the top", type: "rich" },
+      { key: "show_signup", label: "Show the newsletter sign-up form at the top", type: "boolean" },
+      { key: "note", label: "Note in a box at the top (optional)", type: "rich" },
       { key: "heading", label: "Heading", type: "string" },
       { key: "text", label: "Text", type: "rich" },
       { key: "button_label", label: "Email button wording", type: "string" },
       { key: "direct_text", label: "Words before the email address", type: "string" },
       { key: "description", label: "Description for search engines", type: "text" },
+    ],
+  },
+  {
+    id: "newsletter", label: "Newsletter", kind: "object", key: "newsletter", pageUrl: () => "/",
+    intro: "The sign-up form (from Kit) and the subscriber password. The form shows wherever “Show the sign-up form” is ticked.",
+    fields: [
+      { key: "subscriber_password", label: "Subscriber password", type: "string", help: "Opens every page and story marked “Subscribers only”. Put it in the email Kit sends when someone confirms, or in your newsletters. If you change it, everyone needs the new one. Capital letters don’t matter. Until a password is set, subscriber pages stay closed." },
+      { key: "locked_message", label: "Message on locked pages", type: "rich" },
+      { key: "heading", label: "Form heading", type: "string" },
+      { key: "text", label: "Form text", type: "rich" },
+      { key: "picture", label: "Picture on the form", type: "image" },
+      { key: "placeholder", label: "Words inside the email box", type: "string" },
+      { key: "button", label: "Button wording", type: "string" },
+      { key: "small_print", label: "Small print under the button", type: "string" },
+      { key: "success_message", label: "Message after someone subscribes", type: "string", help: "Keep this the same as in Kit." },
+      { key: "subscribed_message", label: "Message when someone who already subscribed comes back", type: "string", help: "Kit remembers people who signed up on that device and shows this instead of the form." },
+      { key: "kit_form_id", label: "Kit form number", type: "string", help: "From the form’s HTML code in Kit: the number after /forms/ (e.g. 10220250). Only change this if you make a new form in Kit." },
+      { key: "kit_uid", label: "Kit form code", type: "string", help: "From the same code: the value after data-uid= (e.g. ab3680b7b5)." },
     ],
   },
   {

@@ -53,10 +53,25 @@ In the new project, open **Settings**:
 Open `https://<your-project-name>.pages.dev/admin`, type the password, and that's it.
 Sarah can change the password later inside the admin (**Password** in the side menu).
 
+## 6. Choose the subscriber password
+
+The hidden subscriber page and Words of Love are **Subscribers only**. They stay closed
+until a subscriber password is chosen.
+
+1. In the admin, open **Newsletter** and type a **Subscriber password**. Save.
+2. In Kit, put that password, and the hidden page's address, in the email new subscribers
+   get: either the confirmation email or your first welcome email.
+   - The address is `https://<your-project-name>.pages.dev/subscriber-stories-iud5ltq5.html`.
+3. To change the password later, change it in the admin, then put the new one in your next
+   newsletter. Everyone then needs the new password.
+
 ---
 
 ## Good to know
 
+- **The newsletter sign-up form** is Kit's own form, so sign-ups go straight to your Kit list.
+  Its words and messages can be changed in the admin under **Newsletter**. Keep the two
+  messages there the same as in Kit.
 - **Free plan limits:** about 100,000 page visits a day and 1,000 saves a day. That's far more than an author site needs.
 - **Your own web address:** in the Cloudflare project, open **Custom domains** to add one,
   such as `books.buitendyk.ca`, if you control that domain. Cloudflare shows what to change.
