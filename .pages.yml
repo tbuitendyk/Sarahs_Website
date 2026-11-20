@@ -1,0 +1,413 @@
+# Settings for Sarah's editing dashboard (Pages CMS, https://pagescms.org).
+# This file decides what shows up in the dashboard and which boxes Sarah fills in.
+# The field names here must match the ones build.py reads from content/*.json.
+
+media:
+  - name: images
+    label: Pictures
+    input: assets/images
+    output: /assets/images
+    categories: [image]
+    rename: safe
+  - name: downloads
+    label: Downloads
+    input: assets/downloads
+    output: /assets/downloads
+    categories: [document]
+    rename: safe
+
+content:
+
+  # ---------------------------------------------------------------- Books
+  - name: books
+    label: Books
+    type: file
+    path: content/books.json
+    format: json
+    list: true
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: id
+        label: Web address name
+        type: string
+        description: "Short name used in the book's web address, e.g. igs-1 makes books/igs-1.html. Small letters, numbers and dashes. Don't change it once people have the link. Leave empty to make one from the title."
+      - name: label
+        label: Small gold label
+        type: string
+        description: "Optional words shown above the title, e.g. IGS: Files or Anthology · Books for Bibles Press."
+      - name: cover
+        label: Cover picture
+        type: image
+        description: "Leave empty for a dark 'Cover coming soon' cover."
+        options:
+          media: images
+      - name: buy
+        label: Buy link
+        type: string
+        description: "The web address where people can buy the book. Leave empty and the Buy the book button stays greyed out."
+      - name: show_on
+        label: Show on
+        type: select
+        description: "Which book lists show this book. Books show in the same order as this list, so put the newest first (My Books has no short stories)."
+        options:
+          multiple: true
+          values:
+            - name: my-books
+              label: My Books
+            - name: anthologies
+              label: Anthologies
+            - name: igs-files
+              label: "IGS: Files"
+            - name: subscribers
+              label: Hidden subscriber page
+      - name: card_text
+        label: Text under the cover
+        type: text
+        description: "Optional words shown under the cover on the book lists."
+      - name: description
+        label: The book's own page
+        type: rich-text
+        description: "Write anything here and the book gets its own page, and its Learn more button turns on. Heading 3 makes a big line; a quote ending with a Bible reference (like John 1:5) shows as a verse; any other quote shows as a box."
+        options:
+          format: markdown
+          media: images
+      - name: download
+        label: Free download file
+        type: file
+        description: "Only for free stories. Shows a Download button in place of Buy the book."
+        options:
+          media: downloads
+      - name: download_note
+        label: Note under the download
+        type: string
+      - name: hidden
+        label: Keep this book's page out of search engines
+        type: boolean
+        description: "Turn on for subscriber-only stories."
+
+  # ---------------------------------------------------------------- Blog
+  - name: blog
+    label: Blog posts
+    type: file
+    path: content/blog.json
+    format: json
+    list: true
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: date
+        label: Date
+        type: date
+        description: "Posts show newest first."
+        options:
+          format: yyyy-MM-dd
+      - name: body
+        label: Post
+        type: rich-text
+        options:
+          format: markdown
+          media: images
+
+  # ---------------------------------------------------------------- Pages
+  - name: pages
+    label: Pages
+    type: file
+    path: content/pages.json
+    format: json
+    list: true
+    fields:
+      - name: title
+        label: Title
+        type: string
+        required: true
+      - name: slug
+        label: Web address name
+        type: string
+        description: "e.g. about makes about.html. Small letters, numbers and dashes. Don't change it once people have the link. Leave empty to make one from the title."
+      - name: menu
+        label: Show in the menu
+        type: select
+        options:
+          values:
+            - name: main
+              label: Main menu
+            - name: under-my-books
+              label: Under My Books
+            - name: "no"
+              label: Not in the menu
+      - name: menu_label
+        label: Menu wording
+        type: string
+        description: "The words in the menu, if different from the title."
+      - name: menu_position
+        label: Menu position
+        type: number
+        description: "Lower numbers come first. Main menu: Home 10, Blog 20, About 30, Contact 40, In Progress 50, My Books 60. Under My Books: IGS: Files 10, Anthologies 20, Short Stories 30. Use a number in between to fit a page in, e.g. 35."
+        options:
+          min: 0
+      - name: eyebrow
+        label: Small gold words above the title
+        type: string
+      - name: intro
+        label: Italic line under the title
+        type: text
+      - name: photo
+        label: Photo beside the text
+        type: image
+        options:
+          media: images
+      - name: photo_description
+        label: What the photo shows
+        type: string
+        description: "For people who can't see the picture, e.g. Sarah Buitendyk."
+      - name: body
+        label: Page text
+        type: rich-text
+        description: "Heading 3 makes a big line; a quote ending with a Bible reference (like John 1:5) shows as a verse; any other quote shows as a box."
+        options:
+          format: markdown
+          media: images
+      - name: book_list
+        label: Book list on this page
+        type: select
+        description: "Shows the books that have this list ticked in Books."
+        options:
+          values:
+            - name: none
+              label: No book list
+            - name: my-books
+              label: My Books
+            - name: anthologies
+              label: Anthologies
+            - name: igs-files
+              label: "IGS: Files"
+            - name: subscribers
+              label: Hidden subscriber page
+      - name: book_list_heading
+        label: Heading above the book list
+        type: string
+      - name: centered
+        label: Centre the text
+        type: boolean
+      - name: hidden
+        label: Hidden page
+        type: boolean
+        description: "Not in the menu and kept out of search engines. Only people with the link can open it (anyone can if the link is shared)."
+      - name: description
+        label: Description for search engines
+        type: text
+
+  # ---------------------------------------------------------------- Home page
+  - name: home
+    label: Home page
+    type: file
+    path: content/home.json
+    format: json
+    fields:
+      - name: hero
+        label: Welcome banner
+        type: object
+        fields:
+          - name: welcome
+            label: Top line
+            type: string
+          - name: left
+            label: Left word (script)
+            type: string
+          - name: middle
+            label: Middle words (old-style letters, one word per line)
+            type: string
+          - name: middle_small
+            label: Small middle word
+            type: string
+          - name: right
+            label: Right word (bold)
+            type: string
+      - name: recent_release
+        label: Recent release
+        type: object
+        fields:
+          - name: section_title
+            label: Section heading
+            type: string
+          - name: label
+            label: Small gold label
+            type: string
+          - name: title
+            label: Book title
+            type: string
+          - name: cover
+            label: Cover picture
+            type: image
+            options:
+              media: images
+          - name: quote
+            label: Verse or quote
+            type: text
+          - name: quote_source
+            label: Where the verse is from
+            type: string
+          - name: text
+            label: Text
+            type: rich-text
+            options:
+              format: markdown
+          - name: learn_more
+            label: Learn more link
+            type: string
+            description: "e.g. books/light-through-his-love.html"
+          - name: buy
+            label: Buy link
+            type: string
+      - name: about
+        label: About me
+        type: object
+        fields:
+          - name: section_title
+            label: Section heading
+            type: string
+          - name: photo
+            label: Photo
+            type: image
+            options:
+              media: images
+          - name: photo_description
+            label: What the photo shows
+            type: string
+          - name: text
+            label: Text
+            type: rich-text
+            options:
+              format: markdown
+      - name: reviews
+        label: What readers are saying
+        type: object
+        fields:
+          - name: title
+            label: Section heading
+            type: string
+          - name: text
+            label: Text
+            type: rich-text
+            options:
+              format: markdown
+      - name: newsletter
+        label: Newsletter signup
+        type: object
+        fields:
+          - name: title
+            label: Section heading
+            type: string
+          - name: text
+            label: Text
+            type: rich-text
+            options:
+              format: markdown
+
+  # ---------------------------------------------------------------- In Progress
+  - name: in_progress
+    label: In Progress
+    type: file
+    path: content/in-progress.json
+    format: json
+    fields:
+      - name: title
+        label: Page title
+        type: string
+      - name: eyebrow
+        label: Small gold words above the title
+        type: string
+      - name: description
+        label: Description for search engines
+        type: text
+      - name: items
+        label: Works in progress
+        type: object
+        list: true
+        fields:
+          - name: title
+            label: Title
+            type: string
+          - name: text
+            label: Text
+            type: rich-text
+            options:
+              format: markdown
+          - name: link
+            label: Link
+            type: string
+            description: "Optional page the title links to, e.g. igs-files.html or books/igs-1.html."
+          - name: show_bar
+            label: Show a progress bar
+            type: boolean
+          - name: percent
+            label: How full the bar is (0 to 100)
+            type: number
+            options:
+              min: 0
+              max: 100
+
+  # ---------------------------------------------------------------- Contact
+  - name: contact
+    label: Contact page
+    type: file
+    path: content/contact.json
+    format: json
+    fields:
+      - name: title
+        label: Page title
+        type: string
+      - name: note
+        label: Note in the box at the top
+        type: rich-text
+        options:
+          format: markdown
+      - name: heading
+        label: Heading
+        type: string
+      - name: text
+        label: Text
+        type: rich-text
+        options:
+          format: markdown
+      - name: button_label
+        label: Email button wording
+        type: string
+      - name: direct_text
+        label: Words before the email address
+        type: string
+      - name: description
+        label: Description for search engines
+        type: text
+
+  # ---------------------------------------------------------------- Site settings
+  - name: site
+    label: Site settings
+    type: file
+    path: content/site.json
+    format: json
+    fields:
+      - name: site_name
+        label: Site name
+        type: string
+      - name: tagline
+        label: Tagline
+        type: string
+      - name: author
+        label: Author name (on "coming soon" covers)
+        type: string
+      - name: email
+        label: Email address
+        type: string
+        description: "Shown on the Contact page and in the footer."
+      - name: description
+        label: Description for search engines
+        type: text
+      - name: copyright
+        label: Footer copyright line
+        type: string

@@ -1,0 +1,3 @@
+# Built website (made by build.py; the host rebuilds it)
+_site/
+__pycache__/

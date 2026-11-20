@@ -2,127 +2,78 @@
 
 The website of **Sarah Buitendyk**, a young Christian author who writes clean contemporary, suspense and fantasy stories with romance woven in. The tagline is "Writing for God's glory".
 
-The site was moved here in November 2026 from WordPress.com (sarahbuitendykbooks.wordpress.com). Sarah builds it out by asking Claude for changes, so assume the person you're talking to may not be a developer.
+The site was moved here in November 2026 from WordPress.com (sarahbuitendykbooks.wordpress.com).
+
+**Sarah edits all the content herself** in a Pages CMS dashboard (app.pagescms.org), logging in with her email. She explicitly does not want to depend on GitHub or Claude for everyday edits. Claude's job is the design, the build and any new kinds of content. Whatever you add, keep it editable from the dashboard.
 
 ## Working with Sarah
 
-- **Her words are hers. Copy them exactly.** Never paraphrase, shorten, summarise or "polish" her text, including blurbs and short versions on book cards. When a card needs a blurb, use her original text word for word. If you spot a typo, point it out and let her decide.
+- **Her words are hers. Copy them exactly.** Never paraphrase, shorten, summarise or "polish" her text, including blurbs on book cards. If you spot a typo, point it out and let her decide.
 - Explain what you changed in plain language, with no jargon.
-- After any visual change, preview the page and show her a screenshot at desktop and phone widths.
-- Ask before big redesigns, frameworks or build tools, or third-party services (contact forms, newsletter tools, analytics).
+- After any visual change, build, preview, and show her a screenshot at desktop and phone widths.
+- She doesn't want to pay for anything: no paid services or plans.
+- Ask before big redesigns or adding third-party services.
 
 ## How the site works
 
-Plain HTML pages, one stylesheet and a few small scripts, with **no build step**. What's in the repo is exactly what gets published.
+```
+content/*.json      ALL words, settings and lists. Edited by Sarah through the dashboard
+.pages.yml          Dashboard settings: which boxes Sarah sees for each content file
+build.py            Turns content/*.json into the finished site in _site/ (Python standard library only)
+assets/css/style.css  All styling. Colours and fonts are CSS variables at the top
+assets/js/site.js   Mobile menu button
+assets/images/      Logo, favicons, photos; covers/ holds book covers. The dashboard uploads pictures here
+assets/downloads/   Free downloads (e.g. words-of-love.docx). The dashboard uploads files here
+_site/              Built output. Never edit, never commit (in .gitignore)
+SETUP.md            One-time setup for Cloudflare Pages + Pages CMS, written for non-developers
+```
 
-Preview locally from the repo folder:
+Build and preview:
 
 ```bash
-python3 -m http.server 8000
+python3 build.py
 ```
 
-Then open http://localhost:8000. The blog and the book lists load from text files, so they need this local server; opening the HTML files directly won't work.
-
-```
-index.html             Home: hero, recent release, about, reviews and newsletter placeholders
-about.html             About Me
-contact.html           Contact (email link)
-blog.html              Blog. Shows the posts written in content/blog-posts.txt
-in-progress.html       Works in progress, with progress bars
-books.html             My Books (book list comes from content/books.txt)
-anthologies.html       Anthologies (under My Books; list from content/books.txt)
-igs-files.html         IGS: Files series page (under My Books; list from content/books.txt)
-short-stories.html     Short Stories for Subscribers: public placeholder (under My Books)
-subscriber-stories-iud5ltq5.html
-                       HIDDEN subscriber page. Only reachable by the link in the newsletter
-book.html              Automatic page for any book in content/books.txt, e.g. book.html#igs-1
-books/<slug>.html      Hand-made pages for older books (Light Through His Love, Words of Love)
-content/books.txt      Every book card and automatic book page, as plain text. Sarah can edit this herself
-content/blog-posts.txt All blog posts, as plain text. Sarah can edit this herself
-assets/css/style.css   All styling. Colours and fonts are CSS variables at the top
-assets/js/site.js      Mobile menu button
-assets/js/text-format.js  Shared: turns the plain-text files into formatted text
-assets/js/blog.js      Reads content/blog-posts.txt and shows it on the Blog page
-assets/js/books.js     Reads content/books.txt: fills the book lists and book.html
-assets/images/         Logo, favicons, photo of Sarah; covers/ holds book covers
-assets/downloads/      Files readers can download (e.g. words-of-love.docx)
-.nojekyll              Tells GitHub Pages to serve files as they are
+```bash
+python3 -m http.server 8000 -d _site
 ```
 
-Places Sarah can edit herself are marked with ✏️ comments in the HTML.
+The host (Cloudflare Pages) runs `python3 build.py` with output directory `_site` after every commit. That includes every save in the dashboard, since Pages CMS commits to the repo.
 
-## Rules for every edit
+What gets built:
+- `index.html`, `blog.html`, `contact.html` and `in-progress.html` come from `home.json`, `blog.json`, `contact.json` and `in-progress.json`.
+- One `<slug>.html` per entry in `pages.json`: About, My Books, IGS: Files, Anthologies, Short Stories, the hidden subscriber page, and any page Sarah adds.
+- `books/<id>.html` for each book in `books.json` that has a description or a download.
+- `404.html`.
 
-- **The header and footer are repeated in every page.** When you change the menu, the tagline, the footer or the email address, change it in *every* `.html` file. `grep -rl 'id="site-nav"' --include=*.html .` lists them all.
-- **Use relative paths, never leading-slash paths.** Pages at the root use `assets/...` and `books/x.html`. Pages in `books/` use `../assets/...` and `../index.html`.
-- **Mark the current page in the menu.** Its menu link gets `aria-current="page"`. On a book page, "My Books" gets `aria-current="true"`.
-- **Book cards live in `content/books.txt`, not in the HTML.** Every cover gets a "Learn more" button and a "Buy the book" button (Sarah asked for this on all book lists). Free stories with `Download:` get "Download" instead of "Buy the book".
-- **A button with `href="#"` shows greyed out** and can't be clicked. In `books.txt`, an empty `Buy:` or a book with no description (so no page yet) produces this.
-- **Never link to the hidden subscriber page** (`subscriber-stories-iud5ltq5.html`) from anywhere on the site, and keep its `noindex` meta tag. It's only shared in Sarah's newsletter. `books/words-of-love.html` is a subscriber story, so it has `noindex` too.
-- **Every image needs `alt` text** and explicit `width` and `height` attributes. Keep images under about 300 KB; covers about 700 px wide is plenty.
-- Use curly quotes and apostrophes (’ “ ”) in HTML to match the rest of the site.
-- Update the `<title>` and `<meta name="description">` of every new page.
+## Rules for every change
 
-## Common tasks
+- **Keep three things in sync:** the fields in `.pages.yml`, the keys in `content/*.json`, and what `build.py` reads. If you add a field, add it to all three. Check with `ruby -ryaml -e 'YAML.safe_load(File.read(".pages.yml"))'` that the config is valid YAML.
+- **Don't hard-code Sarah's words in `build.py` or the HTML.** Text belongs in `content/*.json`, so she can edit it. The only fixed labels are small UI words (Learn more, Buy the book, Download, Docs Download:, Coming soon…).
+- **Never edit `_site/`.** Change `build.py`, `assets/` or `content/` and rebuild.
+- **Build must never crash on odd content.** Sarah may leave fields empty, type numbers as text, and so on. Read fields with `text()`/`truthy()`, skip entries without a title, and print a `WARNING:` rather than failing. Invalid JSON is the one case that stops the build, and then the live site simply keeps the previous version.
+- **Relative paths only** in the built HTML. Pages at the root use `assets/...`; pages in `books/` use `../`. The `{P}` placeholder in `build.py` is replaced with the right prefix. The dashboard saves uploads as `/assets/...`, and `asset_url()` makes them relative. The one exception is `404.html`, which uses root paths.
+- **Every book card has "Learn more" and "Buy the book"** (Sarah asked for this). Free stories with a download show "Download" instead. A button with `href="#"` is greyed out: no page yet, or no buy link yet.
+- **Never link to the hidden subscriber page** (`subscriber-stories-iud5ltq5.html`, `"hidden": true` in `pages.json`) from anywhere. Hidden pages and hidden books get `noindex`. Words of Love is a hidden book.
+- Every image needs `alt` text. Keep images under about 300 KB.
 
-**Add a blog post**
-Add it at the **top** of `content/blog-posts.txt`, under the notes. The format is explained in the file:
+## How Sarah's text is formatted
 
-```
-=== December 1, 2026 | My Post Title ===
-First paragraph.
+Rich-text fields are saved as Markdown, and `build.py`'s `markdown()` turns them into HTML:
+- Heading 1 and 2 become a section heading. Heading 3 becomes a big display line (e.g. "Hi!"); on centred pages it's a centred italic tagline.
+- A quote whose last line is a Bible reference (`John 1:5`) shows in verse style. Any other quote is a boxed note.
+- Lists, bold, italic, links, images and dividers work as usual. Raw HTML is escaped, except a few harmless tags (`<u>`, `<br>`…).
+- Straight quotes become curly quotes.
 
-Second paragraph with **bold**, *italic* and a [link](https://example.com).
-```
+## The menu
 
-Posts appear on the Blog page newest first; an empty file shows "Coming soon…". Each post gets its own link: `blog.html#december-1-2026-my-post-title`. Straight quotes typed in the file are shown as curly quotes automatically.
-
-**Move a progress bar** (`in-progress.html`)
-Change the number in `style="--percent: 85"`. It takes any number from 0 to 100. To add a bar to another book, copy its two `progress` lines.
-
-**Add a new book, or fill in an IGS book**
-Everything is in `content/books.txt`; the format is explained at the top of the file. Each book is a block:
-
-```
-=== igs-1 ===
-Title: IGS #1
-Label: IGS: Files
-Cover: igs-1.jpg
-Buy: https://www.amazon.com/...
-Show on: IGS: Files, My Books
-Card text: Optional words under the cover.
-
-The description. This becomes the book's own page at book.html#igs-1.
-```
-
-- Books show in file order. On My Books, Sarah's rule is publication order, newest first, and **no short stories**.
-- `Show on:` takes My Books, Anthologies, IGS: Files and Subscribers.
-- Cover pictures go in `assets/images/covers/`; `Cover:` is just the file name.
-- Writing a description creates the book's page and turns on its Learn more button.
-- `Page:` points Learn more at a hand-made page instead (used by the two older books).
-- Ask whether a new book should replace the "Recent Release" on the home page.
-
-There are four IGS cards (IGS #1 to #4), from "One team. Three romances. Four stories.". Only IGS #1 has a description, so far just its line from In Progress.
-
-**Add a story to the hidden subscriber page**
-Add it to `content/books.txt` with `Show on: Subscribers`. For a free download, put the file in `assets/downloads/` and add `Download: file-name.docx`.
-
-**Change colours or fonts**
-Edit the variables at the top of `assets/css/style.css`. The brand colours come from the logo: ink `#171717` and gold `#ffbd59`. On light backgrounds use `--gold-deep` for text, because bright gold is unreadable there.
+Built-in pages have fixed positions: Home 10, Blog 20, Contact 40, In Progress 50. Pages in `pages.json` set `menu` (`main`, `under-my-books`, `no`) and `menu_position`. About is 30 and My Books is 60. Under My Books: IGS: Files 10, Anthologies 20, Short Stories 30. "Under My Books" items hang off the page whose slug is `books`.
 
 ## Open items
 
-- **Words of Love has no cover.** The image was already missing (404) on WordPress, so the page uses a typographic placeholder.
-- **Words of Love** is listed only on the hidden subscriber page. That's an assumption: it was unlinked on WordPress and looked like a subscriber story.
-- **The hidden subscriber page is unlisted, not locked.** Anyone who has the link can open it, including people a newsletter is forwarded to. While the GitHub repo is public, anyone browsing it can also see the page's name and the stories, so the repo should be made private before launch (see Publishing).
-- **The contact form became an email link.** Sarah's original sentence ends "…send a message with the form below." That part is left off because there is no form. A form would need a service such as Formspree; ask first.
+- **One-time setup isn't done yet.** The site isn't live, and the WordPress site is still public. See `SETUP.md`: make the repo private, connect Cloudflare Pages, connect Pages CMS and invite Sarah's email.
+- **Words of Love has no cover.** The image was missing on WordPress too.
+- **The hidden subscriber page is unlisted, not locked.** Anyone with the link can open it.
+- **The contact form became an email link.** Sarah's original sentence ends "…send a message with the form below."; that part is left off because there's no form.
 - The **newsletter signup** and **reader reviews** sections still say "Coming soon…".
-- **IGS #3 and #4** are placeholders based on "Four stories"; their real titles aren't known yet.
-
-## Publishing
-
-The site isn't live from this repo yet; the WordPress site is still the public one. Sarah doesn't want to pay for anything, so hosting must be free.
-
-- **Recommended: Cloudflare Pages (free).** It works with a **private** GitHub repo, which keeps the hidden subscriber page's name out of public view. The address is `https://<chosen-name>.pages.dev`. No build command; the output directory is the repo root.
-- GitHub Pages is also free, but only for public repos. Its address would be `https://tbuitendyk.github.io/Sarahs_Website/`.
-- A personalised address needs a domain name, which usually costs a small yearly fee. Sarah's email is at `buitendyk.ca`, though, so whoever controls that domain could point a free subdomain (for example `books.buitendyk.ca`) at the site.
+- **IGS #3 and #4** are placeholders based on "Four stories".
