@@ -18,13 +18,13 @@ It's a plain HTML and CSS site with no build step, so any static host (GitHub Pa
 
 3. Save (on GitHub: **Commit changes**). The post appears at the top of the Blog page.
 
+## Add a book, or a page for a book
+
+Open [`content/books.txt`](content/books.txt), copy one of the books in it, and fill in the lines (title, cover, buy link, which lists it shows on). Writing a description under a book gives it its own page, and its **Learn more** button turns on. The full instructions are at the top of that file.
+
 ## Move a progress bar
 
 In [`in-progress.html`](in-progress.html), find `--percent: 85` and change the number to anything from 0 (empty) to 100 (full).
-
-## Add covers and links for the IGS books
-
-In [`igs-files.html`](igs-files.html), each IGS book has a ✏️ note explaining how to swap in its cover and links. The buttons stay greyed out until a link is added.
 
 ## Preview it
 

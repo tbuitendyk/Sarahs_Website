@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="assets/css/style.css">
   <script>document.documentElement.className += " js";</script>
   <script src="assets/js/site.js" defer></script>
+  <script src="assets/js/text-format.js" defer></script>
+  <script src="assets/js/books.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -57,20 +59,9 @@
 
     <section class="section">
       <div class="wrap">
-        <!-- ✏️ Newest book first. To add a book, copy a whole <article class="book-card"> … </article> block and paste it at the top. -->
-        <div class="book-grid">
-          <article class="book-card">
-            <a class="cover-link" href="books/light-through-his-love.html">
-              <img class="cover" src="assets/images/covers/light-through-his-love.jpg" alt="Cover of Light Through His Love" width="663" height="1024">
-            </a>
-            <h3>Light Through His Love</h3>
-            <p class="book-meta">Anthology · Books for Bibles Press</p>
-            <p>Books for Bibles Press presents its first anthology, featuring how God’s love shines even in the darkest places. Ten young authors showcase their talents in thought provoking stories, splashing the pages with rays of light.</p>
-            <div class="btn-row">
-              <a class="btn btn-outline" href="books/light-through-his-love.html">Learn more</a>
-              <a class="btn" href="https://www.amazon.com/Light-Through-Love-Abigail-Creamer/dp/B0GPMDDFZ3">Buy the book</a>
-            </div>
-          </article>
+        <!-- ✏️ The books here come from content/books.txt (every book with "Show on: My Books"). -->
+        <div class="book-grid" data-books="My Books">
+          <noscript><p class="coming-soon">Please turn on JavaScript to see the books.</p></noscript>
         </div>
       </div>
     </section>

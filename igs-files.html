@@ -13,6 +13,8 @@
   <link rel="stylesheet" href="assets/css/style.css">
   <script>document.documentElement.className += " js";</script>
   <script src="assets/js/site.js" defer></script>
+  <script src="assets/js/text-format.js" defer></script>
+  <script src="assets/js/books.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -68,62 +70,9 @@
     <section class="section section-alt">
       <div class="wrap">
         <h2 class="section-title">The Books</h2>
-        <div class="book-grid">
-          <!-- ✏️ IGS #1. To add the real cover, put the picture in assets/images/covers/ and replace the whole <div class="cover-placeholder">…</div> below with: <img class="cover" src="assets/images/covers/FILE-NAME.jpg" alt="Cover of IGS #1">  To add the links, replace the # in href="#" on each button with the real web address. Buttons with # are greyed out until then. -->
-          <article class="book-card">
-            <div class="cover-placeholder">
-              <span class="ph-title">IGS #1</span>
-              <span class="ph-author">Sarah Buitendyk</span>
-              <span class="ph-note">Cover coming soon</span>
-            </div>
-            <h3>IGS #1</h3>
-            <div class="btn-row">
-              <a class="btn btn-outline" href="#">Learn more</a>
-              <a class="btn" href="#">Buy the book</a>
-            </div>
-          </article>
-
-          <!-- ✏️ IGS #2. To add the real cover, put the picture in assets/images/covers/ and replace the whole <div class="cover-placeholder">…</div> below with: <img class="cover" src="assets/images/covers/FILE-NAME.jpg" alt="Cover of IGS #2">  To add the links, replace the # in href="#" on each button with the real web address. Buttons with # are greyed out until then. -->
-          <article class="book-card">
-            <div class="cover-placeholder">
-              <span class="ph-title">IGS #2</span>
-              <span class="ph-author">Sarah Buitendyk</span>
-              <span class="ph-note">Cover coming soon</span>
-            </div>
-            <h3>IGS #2</h3>
-            <div class="btn-row">
-              <a class="btn btn-outline" href="#">Learn more</a>
-              <a class="btn" href="#">Buy the book</a>
-            </div>
-          </article>
-
-          <!-- ✏️ IGS #3. To add the real cover, put the picture in assets/images/covers/ and replace the whole <div class="cover-placeholder">…</div> below with: <img class="cover" src="assets/images/covers/FILE-NAME.jpg" alt="Cover of IGS #3">  To add the links, replace the # in href="#" on each button with the real web address. Buttons with # are greyed out until then. -->
-          <article class="book-card">
-            <div class="cover-placeholder">
-              <span class="ph-title">IGS #3</span>
-              <span class="ph-author">Sarah Buitendyk</span>
-              <span class="ph-note">Cover coming soon</span>
-            </div>
-            <h3>IGS #3</h3>
-            <div class="btn-row">
-              <a class="btn btn-outline" href="#">Learn more</a>
-              <a class="btn" href="#">Buy the book</a>
-            </div>
-          </article>
-
-          <!-- ✏️ IGS #4. To add the real cover, put the picture in assets/images/covers/ and replace the whole <div class="cover-placeholder">…</div> below with: <img class="cover" src="assets/images/covers/FILE-NAME.jpg" alt="Cover of IGS #4">  To add the links, replace the # in href="#" on each button with the real web address. Buttons with # are greyed out until then. -->
-          <article class="book-card">
-            <div class="cover-placeholder">
-              <span class="ph-title">IGS #4</span>
-              <span class="ph-author">Sarah Buitendyk</span>
-              <span class="ph-note">Cover coming soon</span>
-            </div>
-            <h3>IGS #4</h3>
-            <div class="btn-row">
-              <a class="btn btn-outline" href="#">Learn more</a>
-              <a class="btn" href="#">Buy the book</a>
-            </div>
-          </article>
+        <!-- ✏️ The IGS books come from content/books.txt (every book with "Show on: IGS: Files"). -->
+        <div class="book-grid" data-books="IGS: Files">
+          <noscript><p class="coming-soon">Please turn on JavaScript to see the books.</p></noscript>
         </div>
       </div>
     </section>
