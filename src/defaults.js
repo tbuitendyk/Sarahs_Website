@@ -21,6 +21,7 @@ export default {
     "kit_form_id": "10220250",
     "kit_uid": "ab3680b7b5",
     "subscriber_password": "",
+    "remember_days": 30,
     "locked_message": "This page is for newsletter subscribers. Please enter the subscriber password from your newsletter email.",
     "subscriber_page": "subscriber-stories-iud5ltq5",
     "unlock_prompt": "Already a subscriber? Enter the subscriber password from your newsletter email to read the stories."

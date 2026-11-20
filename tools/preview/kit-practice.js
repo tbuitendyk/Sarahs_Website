@@ -25,6 +25,8 @@
       var fields = form.querySelector("[data-element='fields']");
       if (fields) fields.parentNode.replaceChild(msg, fields);
       try { localStorage.setItem(key, "1"); } catch (err) { /* storage blocked */ }
+      // Same announcement Kit's own script makes, so the "Already a subscriber?" box appears.
+      form.dispatchEvent(new CustomEvent("ckjs:submission:complete", { bubbles: true, detail: { uid: form.getAttribute("data-uid") } }));
     });
   });
 })();

@@ -55,7 +55,7 @@ KV key `content` = `{ data, version, savedAt }`, where `data` has:
 - `site`: name, tagline, author, email, description, copyright
 - `newsletter`:
   - the Kit form: `kit_form_id`, `kit_uid`, heading, text, picture, placeholder, button, small_print, success_message, subscribed_message
-  - `subscriber_password`, `locked_message`, `subscriber_page` (slug the "Already a subscriber?" box opens) and `unlock_prompt` for the subscriber lock
+  - `subscriber_password`, `remember_days` (default 30), `locked_message`, `subscriber_page` (slug the "Already a subscriber?" box opens) and `unlock_prompt` for the subscriber lock
 - `home`: hero, recent release, about, reviews, newsletter
 - `contact`
 - `progress`: title, eyebrow and `items` (each with `show_bar` and `percent` 0–100)
@@ -74,12 +74,12 @@ KV key `content` = `{ data, version, savedAt }`, where `data` has:
 
 **Subscriber lock.**
 - Pages and books with `subscribers_only` render `lockedView()` until the visitor has entered `newsletter.subscriber_password` at `POST /subscribers/unlock`.
-- Unlocking sets the `__Host-sb_sub` cookie, signed with the admin secret plus the password. Changing the password locks everyone out again.
+- Unlocking sets the `__Host-sb_sub` cookie for `remember_days` days (1–365, default 30), signed with the admin secret plus the password. After that, or once the password changes, the visitor must enter it again.
 - Matching ignores capital letters and surrounding spaces. Wrong tries are limited to 10 per 15 minutes per address (`subtries:`).
 - Downloads of subscriber books (`/assets/downloads/*` and `/files/*`) also need the cookie. That's why `public/_routes.json` sends `/assets/downloads/*` through the function.
 - Locked responses are `private, no-store` and `noindex`.
 - With no subscriber password set, locked pages say "This page isn't open yet."
-- Pages with `unlock_box` show an "Already a subscriber?" password box. It posts `next` (the subscriber page) and `back` (this page), so a wrong password shows the error where it was typed. Once unlocked, the box becomes an "Open the subscriber stories" button. These pages vary per visitor, so they are `private, no-store`. The public Short Stories page has it.
+- Pages with `unlock_box` show an "Already a subscriber?" password box. It posts `next` (the subscriber page) and `back` (this page), so a wrong password shows the error where it was typed. Once unlocked, the box becomes an "Open the subscriber stories" button. Otherwise the box section starts `hidden`, and `public/assets/js/subscriber-box.js` shows it only on devices where Kit recorded a sign-up (localStorage `cksubscribed-*`, or Kit's `ckjs:submission:complete` event right after signing up). It is also shown after a wrong try (`?wrong=1`). These pages vary per visitor, so they are `private, no-store`. The public Short Stories page has it.
 
 Rich-text fields are Markdown: `##` heading, `###` big line, `>` quote (verse style when its last line is a Bible reference such as "John 1:5"), lists, `**bold**`, `*italic*`, links.
 

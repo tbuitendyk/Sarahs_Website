@@ -196,7 +196,8 @@ ${emailHtml}      <p class="copyright">${esc(text(this.settings.copyright))}</p>
     description = description || text(this.settings.description);
     const fonts = (FONTS_BASE + (heroFonts ? FONTS_HERO : "")).replace(/&/g, "&amp;");
     const robots = noindex ? '  <meta name="robots" content="noindex, nofollow">\n' : "";
-    const kit = this.usedSignup ? '\n  <script src="https://f.convertkit.com/ckjs/ck.5.js" defer></script>' : "";
+    const kit = (this.usedSubscriberBox ? `\n  <script src="${p}assets/js/subscriber-box.js" defer></script>` : "") +
+      (this.usedSignup ? '\n  <script src="https://f.convertkit.com/ckjs/ck.5.js" defer></script>' : "");
     return `<!doctype html>
 <html lang="en">
 <head>
@@ -598,7 +599,12 @@ ${indent(feed, 4)}
     }
     if (truthy(pg.unlock_box)) {
       const box = this.unlockBox(opts.pathname, opts);
-      if (box) parts.push(`\n<section class="section section-unlock">\n  <div class="wrap">\n${indent(box, 4)}\n  </div>\n</section>`);
+      // The password box is only for people who signed up (Kit remembers that on their device), so it
+      // starts hidden and subscriber-box.js shows it. It stays visible after a wrong try, and people who
+      // already entered the password get the "Open the subscriber stories" button instead.
+      const startHidden = box && !opts.subscriber && !opts.error;
+      if (startHidden) this.usedSubscriberBox = true;
+      if (box) parts.push(`\n<section class="section section-unlock"${startHidden ? " data-subscriber-box hidden" : ""}>\n  <div class="wrap">\n${indent(box, 4)}\n  </div>\n</section>`);
     }
     if (key) {
       const heading = text(pg.book_list_heading);
@@ -665,6 +671,7 @@ ${indent(content + extra, 8)}
   // opts.subscriber: the visitor entered the subscriber password. opts.error: message for the lock screen.
   render(pathname, opts = {}) {
     this.usedSignup = false;
+    this.usedSubscriberBox = false;
     const lockOpts = { subscriber: !!opts.subscriber, error: opts.error || "", pathname: pathname || "/" };
     let path = decodeURIComponent(pathname || "/");
     const depth = Math.max(0, path.replace(/^\/+/, "").split("/").length - 1);

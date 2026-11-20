@@ -119,7 +119,11 @@ export async function clearTries(env, ip, kind = "tries") {
 // locks everyone out until they enter the new one.
 
 export const SUB_COOKIE = "__Host-sb_sub";
-const SUB_SECONDS = 60 * 60 * 24 * 365;
+// How long a device remembers the subscriber password (Sarah sets the days under Newsletter).
+export function rememberSeconds(days) {
+  const d = Math.round(Number(days));
+  return (Number.isFinite(d) && d >= 1 ? Math.min(d, 365) : 30) * 24 * 60 * 60;
+}
 const normal = (pw) => String(pw || "").trim().toLowerCase();
 
 export async function subscriberPasswordMatches(given, expected) {
@@ -128,13 +132,14 @@ export async function subscriberPasswordMatches(given, expected) {
   return sameString(await hmac(k, normal(given)), await hmac(k, normal(expected)));
 }
 
-export async function subscriberCookie(env, password) {
+export async function subscriberCookie(env, password, days) {
+  const seconds = rememberSeconds(days);
   const secret = await sessionSecret(env);
   if (!secret || !normal(password)) return null;
-  const exp = Math.floor(Date.now() / 1000) + SUB_SECONDS;
+  const exp = Math.floor(Date.now() / 1000) + seconds;
   const sig = await hmac(secret, `subscriber|${exp}|${normal(password)}`);
   // Lax (not Strict) so the page opens when someone arrives from a link in the newsletter email.
-  return `${SUB_COOKIE}=${exp}.${sig}; Max-Age=${SUB_SECONDS}; Path=/; HttpOnly; Secure; SameSite=Lax`;
+  return `${SUB_COOKIE}=${exp}.${sig}; Max-Age=${seconds}; Path=/; HttpOnly; Secure; SameSite=Lax`;
 }
 
 export async function isSubscriber(request, env, password) {

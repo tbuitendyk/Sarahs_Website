@@ -177,10 +177,11 @@ async function unlock(request, env) {
   const ip = auth.clientAddress(request);
   if (await auth.tooManyTries(env, ip, "subtries")) return back("wait");
   const { data } = await store.getContent(env);
-  const password = new Site(data).subscriberPassword();
+  const site = new Site(data);
+  const password = site.subscriberPassword();
   if (await auth.subscriberPasswordMatches(form.get("password"), password)) {
     await auth.clearTries(env, ip, "subtries");
-    const cookie = await auth.subscriberCookie(env, password);
+    const cookie = await auth.subscriberCookie(env, password, site.newsletter.remember_days);
     return new Response(null, { status: 303, headers: { location: next, ...(cookie ? { "set-cookie": cookie } : {}) } });
   }
   await auth.recordWrongTry(env, ip, "subtries");
