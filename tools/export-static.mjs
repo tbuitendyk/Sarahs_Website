@@ -59,7 +59,15 @@ for (const p of site.allPaths()) {
   const target = up + unlockedName(next);
   html = html
     .replace(/<form class="lock-form" method="post" action="[^"]*">/, `<form class="lock-form" method="get" action="${target}">`)
-    .replace("</body>", `<script>document.querySelector(".lock-form").addEventListener("submit", function (e) { e.preventDefault(); location.href = "${target}"; });</script>\n</body>`);
+    .replace("</body>", `<script>document.querySelector(".lock-form").addEventListener("submit", function (e) { e.preventDefault(); try { localStorage.setItem("sb-practice-unlocked", "1"); } catch (err) {} location.href = "${target}"; });</script>\n</body>`);
+  write(p, html);
+}
+// Like the real site, the practice password is only asked once: after it has been typed,
+// every locked page goes straight to its unlocked copy.
+for (const p of locked) {
+  const self = unlockedName(path.basename(p));
+  const html = fs.readFileSync(path.join(OUT, p), "utf8")
+    .replace("<body>", `<body>\n<script>try { if (localStorage.getItem("sb-practice-unlocked")) location.replace("${self}"); } catch (e) {}</script>`);
   write(p, html);
 }
 fs.mkdirSync(path.join(OUT, "assets", "preview"), { recursive: true });
