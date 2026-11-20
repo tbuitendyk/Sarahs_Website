@@ -1,0 +1,558 @@
+// Builds every page of the website from the site content (what Sarah edits in /admin).
+// The same design as before; all words come from the content object.
+
+import { esc, text, assetUrl, linkUrl, inline, markdown } from "../public/assets/admin/markdown.js";
+
+const FONTS_BASE = "family=Cinzel:wght@400;600;700" +
+  "&family=Cormorant+Garamond:ital,wght@0,500;0,600;1,500" +
+  "&family=Lora:ital,wght@0,400;0,600;1,400";
+const FONTS_HERO = "&family=Cinzel+Decorative&family=Yellowtail&family=UnifrakturMaguntia&family=Anton";
+
+// Built-in pages and their fixed places in the main menu.
+const SPECIAL_MENU = [
+  { key: "home", href: "index.html", label: "Home", pos: 10 },
+  { key: "blog", href: "blog.html", label: "Blog", pos: 20 },
+  { key: "contact", href: "contact.html", label: "Contact", pos: 40 },
+  { key: "in-progress", href: "in-progress.html", label: "In Progress", pos: 50 },
+];
+export const SPECIAL_SLUGS = new Set(["index", "blog", "contact", "in-progress", "404", "books", "assets", "admin", "api", "files"]);
+const BOOKS_PAGE = "books"; // the page whose menu item holds the "Under My Books" dropdown
+
+export const BOOK_LISTS = {
+  "my-books": "My Books",
+  "anthologies": "Anthologies",
+  "igs-files": "IGS: Files",
+  "subscribers": "Subscribers",
+};
+
+// ---------------------------------------------------------------- helpers
+
+export function slugify(s) {
+  return String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "page";
+}
+const squash = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]/g, "");
+const truthy = (v) => (typeof v === "boolean" ? v : ["true", "yes", "1", "on"].includes(String(v ?? "").trim().toLowerCase()));
+function asList(v) {
+  if (v === null || v === undefined || v === "") return [];
+  if (Array.isArray(v)) return v;
+  return String(v).split(/\s*,\s*/).filter(Boolean);
+}
+function listKey(v) {
+  const want = squash(v);
+  for (const [key, label] of Object.entries(BOOK_LISTS)) {
+    if (want === squash(key) || want === squash(label)) return key;
+  }
+  return null;
+}
+const MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+function niceDate(value) {
+  const v = text(value);
+  const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return v;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  if (mo < 1 || mo > 12 || d < 1 || d > 31) return v;
+  return `${MONTHS[mo - 1]} ${d}, ${y}`;
+}
+function dateKey(value) {
+  const m = text(value).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return m ? m[0] : "0000-00-00";
+}
+export function indent(s, n) {
+  const pad = " ".repeat(n);
+  return String(s).split("\n").map((ln) => (ln.trim() ? pad + ln : ln)).join("\n");
+}
+const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
+const arr = (v) => (Array.isArray(v) ? v : []);
+
+// ---------------------------------------------------------------- the site
+
+export class Site {
+  constructor(content) {
+    const c = obj(content);
+    this.warnings = [];
+    this.settings = obj(c.site);
+    this.home = obj(c.home);
+    this.contact = obj(c.contact);
+    this.progress = c.progress;
+    this.blog = arr(c.blog);
+    this.pages = [];
+    this.books = [];
+    this.prepare(arr(c.pages), arr(c.books));
+  }
+
+  warn(msg) { this.warnings.push(msg); }
+
+  prepare(pagesIn, booksIn) {
+    const seenPages = new Set();
+    for (const raw of pagesIn) {
+      if (!raw || typeof raw !== "object" || !text(raw.title)) continue;
+      const pg = { ...raw, title: text(raw.title) };
+      let slug = slugify(text(pg.slug) || pg.title);
+      if (SPECIAL_SLUGS.has(slug) && slug !== BOOKS_PAGE) {
+        this.warn(`Page "${pg.title}": the address "${slug}" is taken by a built-in page, so it uses "${slug}-page".`);
+        slug += "-page";
+      }
+      while (seenPages.has(slug)) slug += "-2";
+      seenPages.add(slug);
+      pg.slug = slug;
+      pg.hidden = truthy(pg.hidden);
+      this.pages.push(pg);
+    }
+    const seenBooks = new Set();
+    for (const raw of booksIn) {
+      if (!raw || typeof raw !== "object" || !text(raw.title)) continue;
+      const bk = { ...raw, title: text(raw.title) };
+      let id = slugify(text(bk.id) || bk.title);
+      while (seenBooks.has(id)) id += "-2";
+      seenBooks.add(id);
+      bk.id = id;
+      bk.lists = asList(bk.show_on).map(listKey).filter(Boolean);
+      bk.hidden = truthy(bk.hidden);
+      bk.has_page = Boolean(text(bk.description) || text(bk.download));
+      this.books.push(bk);
+    }
+  }
+
+  // -- menu ------------------------------------------------------------------
+  menu() {
+    const top = SPECIAL_MENU.map((m) => ({ ...m, children: [] }));
+    const under = [];
+    for (const pg of this.pages) {
+      const where = squash(pg.menu);
+      if (pg.hidden || ["", "no", "none", "notinthemenu"].includes(where)) continue;
+      const raw = pg.menu_position;
+      let pos = raw === "" || raw === null || raw === undefined ? 100 : Number(raw);
+      if (!Number.isFinite(pos)) pos = 100;
+      const item = { key: pg.slug, href: `${pg.slug}.html`, label: text(pg.menu_label) || pg.title, pos, children: [] };
+      (where.includes("under") ? under : top).push(item);
+    }
+    top.sort((a, b) => a.pos - b.pos);
+    under.sort((a, b) => a.pos - b.pos);
+    const parent = top.find((t) => t.key === BOOKS_PAGE);
+    if (parent) parent.children = under;
+    else top.push(...under);
+    return top;
+  }
+
+  header(p, current, section) {
+    const cur = (key) => (key === current ? ' aria-current="page"' : key === section ? ' aria-current="true"' : "");
+    const items = this.menu().map((it) => {
+      if (it.children.length) {
+        const subs = it.children
+          .map((c) => `              <li><a href="${p}${c.href}"${cur(c.key)}>${esc(c.label)}</a></li>`)
+          .join("\n");
+        return `          <li class="has-sub">\n` +
+          `            <a href="${p}${it.href}"${cur(it.key)}>${esc(it.label)}</a>\n` +
+          `            <ul class="sub">\n${subs}\n            </ul>\n` +
+          `          </li>`;
+      }
+      return `          <li><a href="${p}${it.href}"${cur(it.key)}>${esc(it.label)}</a></li>`;
+    }).join("\n");
+    const name = esc(text(this.settings.site_name) || "Sarah’s Books");
+    const tagline = esc(text(this.settings.tagline));
+    return `  <a class="skip-link" href="#main">Skip to content</a>
+
+  <header class="site-header">
+    <div class="wrap header-inner">
+      <a class="brand" href="${p}index.html">
+        <img src="${p}assets/images/logo.png" alt="" width="60" height="59">
+        <span>
+          <span class="brand-name">${name}</span>
+          <span class="brand-tagline">${tagline}</span>
+        </span>
+      </a>
+      <button class="menu-toggle" type="button" aria-expanded="false" aria-controls="site-nav">Menu</button>
+      <nav id="site-nav" class="site-nav" aria-label="Main">
+        <ul>
+${items}
+        </ul>
+      </nav>
+    </div>
+  </header>
+`;
+  }
+
+  footer(p) {
+    const links = this.menu().map((it) => `        <li><a href="${p}${it.href}">${esc(it.label)}</a></li>`).join("\n");
+    const email = text(this.settings.email);
+    const emailHtml = email ? `      <p class="footer-email"><a href="mailto:${esc(email)}">${esc(email)}</a></p>\n` : "";
+    return `  <footer class="site-footer">
+    <div class="wrap">
+      <img src="${p}assets/images/logo.png" alt="" width="72" height="70">
+      <p class="footer-tagline">${esc(text(this.settings.tagline))}</p>
+      <ul class="footer-nav">
+${links}
+      </ul>
+${emailHtml}      <p class="copyright">${esc(text(this.settings.copyright))}</p>
+    </div>
+  </footer>
+`;
+  }
+
+  shell({ p, title, body, current, section = null, description = "", heroFonts = false, noindex = false }) {
+    const name = text(this.settings.site_name) || "Sarah’s Books";
+    const fullTitle = current === "home" ? name : `${title} – ${name}`;
+    description = description || text(this.settings.description);
+    const fonts = (FONTS_BASE + (heroFonts ? FONTS_HERO : "")).replace(/&/g, "&amp;");
+    const robots = noindex ? '  <meta name="robots" content="noindex, nofollow">\n' : "";
+    return `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>${esc(fullTitle)}</title>
+  <meta name="description" content="${esc(description)}">
+${robots}  <link rel="icon" href="${p}assets/images/favicon-32.png" sizes="32x32" type="image/png">
+  <link rel="apple-touch-icon" href="${p}assets/images/apple-touch-icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?${fonts}&amp;display=swap">
+  <link rel="stylesheet" href="${p}assets/css/style.css">
+  <script>document.documentElement.className += " js";</script>
+  <script src="${p}assets/js/site.js" defer></script>
+</head>
+<body>
+${this.header(p, current, section)}
+  <main id="main">
+${indent(body.replaceAll("{P}", p), 4)}
+  </main>
+
+${this.footer(p)}</body>
+</html>
+`;
+  }
+
+  // -- shared pieces -----------------------------------------------------------
+  bookHref(bk) { return bk.has_page ? `{P}books/${bk.id}.html` : "#"; }
+
+  cover(bk) {
+    if (text(bk.cover)) {
+      return `<img class="cover" src="${esc(assetUrl(bk.cover, "{P}"))}" alt="Cover of ${esc(bk.title)}" width="663" height="1024">`;
+    }
+    return '<div class="cover-placeholder">\n' +
+      `  <span class="ph-title">${esc(bk.title)}</span>\n` +
+      `  <span class="ph-author">${esc(text(this.settings.author) || "Sarah Buitendyk")}</span>\n` +
+      '  <span class="ph-note">Cover coming soon</span>\n' +
+      "</div>";
+  }
+
+  secondButton(bk) {
+    if (text(bk.download)) {
+      return `<a class="btn" href="${esc(assetUrl(bk.download, "{P}"))}" download>Download</a>`;
+    }
+    const buy = linkUrl(bk.buy, "{P}") || "#";
+    return `<a class="btn" href="${esc(buy)}">Buy the book</a>`;
+  }
+
+  bookCard(bk) {
+    const learn = this.bookHref(bk);
+    let cover = this.cover(bk);
+    if (learn !== "#") cover = `<a class="cover-link" href="${learn}">\n${indent(cover, 2)}\n</a>`;
+    const parts = ['<article class="book-card">', indent(cover, 2), `  <h3>${esc(bk.title)}</h3>`];
+    if (text(bk.label)) parts.push(`  <p class="book-meta">${esc(bk.label)}</p>`);
+    if (text(bk.card_text)) parts.push(`  <p>${inline(bk.card_text, "{P}")}</p>`);
+    parts.push('  <div class="btn-row">',
+      `    <a class="btn btn-outline" href="${learn}">Learn more</a>`,
+      `    ${this.secondButton(bk)}`,
+      "  </div>", "</article>");
+    return parts.join("\n");
+  }
+
+  bookGrid(key) {
+    const shown = this.books.filter((b) => b.lists.includes(key));
+    if (!shown.length) return '<p class="coming-soon">Coming soon…</p>';
+    return '<div class="book-grid">\n' + indent(shown.map((b) => this.bookCard(b)).join("\n\n"), 2) + "\n</div>";
+  }
+
+  pageHero(title, eyebrow = "", lede = "") {
+    const parts = ['<section class="page-hero">', '  <div class="wrap">'];
+    if (text(eyebrow)) parts.push(`    <p class="eyebrow">${esc(eyebrow)}</p>`);
+    parts.push(`    <h1>${esc(title)}</h1>`);
+    if (text(lede)) parts.push(`    <p class="lede">${inline(lede, "{P}")}</p>`);
+    parts.push("  </div>", "</section>");
+    return parts.join("\n");
+  }
+
+  // -- pages -------------------------------------------------------------------
+  home_(p) {
+    const h = this.home;
+    const rr = obj(h.recent_release);
+    const ab = obj(h.about);
+    const hero = obj(h.hero);
+
+    let recent = "";
+    if (text(rr.title)) {
+      let cover = "";
+      if (text(rr.cover)) {
+        const img = `<img class="cover" src="${esc(assetUrl(rr.cover, "{P}"))}" alt="Cover of ${esc(rr.title)}" width="663" height="1024">`;
+        const learn = linkUrl(rr.learn_more, "{P}");
+        cover = learn
+          ? `      <a class="feature-media" href="${esc(learn)}">\n        ${img}\n      </a>`
+          : `      <div class="feature-media">\n        ${img}\n      </div>`;
+      }
+      let quote = "";
+      if (text(rr.quote)) {
+        const cite = text(rr.quote_source) ? `\n          <cite>${esc(rr.quote_source)}</cite>` : "";
+        quote = `        <blockquote class="verse">\n          <p>${inline(rr.quote, "{P}")}</p>${cite}\n        </blockquote>\n`;
+      }
+      const buttons = [];
+      if (text(rr.learn_more)) buttons.push(`          <a class="btn btn-outline" href="${esc(linkUrl(rr.learn_more, "{P}"))}">Learn more</a>`);
+      if (text(rr.buy)) buttons.push(`          <a class="btn" href="${esc(linkUrl(rr.buy, "{P}"))}">Buy the book</a>`);
+      const btns = buttons.length ? '        <div class="btn-row">\n' + buttons.join("\n") + "\n        </div>\n" : "";
+      const eyebrow = text(rr.label) ? `        <p class="eyebrow">${esc(rr.label)}</p>\n` : "";
+      recent = `
+<section class="section">
+  <div class="wrap">
+    <h2 class="section-title">${esc(text(rr.section_title) || "Recent Release")}</h2>
+    <div class="feature">
+${cover}
+      <div>
+${eyebrow}        <h3 class="feature-title">${esc(rr.title)}</h3>
+${quote}        ${markdown(rr.text, "{P}")}
+${btns}      </div>
+    </div>
+  </div>
+</section>
+`;
+    }
+
+    let about = "";
+    if (text(ab.text)) {
+      let photo = "";
+      if (text(ab.photo)) {
+        photo = `      <div class="feature-media">\n        <img class="portrait" src="${esc(assetUrl(ab.photo, "{P}"))}" ` +
+          `alt="${esc(text(ab.photo_description) || "Sarah Buitendyk")}" width="645" height="883">\n      </div>\n`;
+      }
+      const layout = photo ? "feature feature-reverse" : "prose prose-center";
+      about = `
+<section class="section section-alt">
+  <div class="wrap">
+    <h2 class="section-title">${esc(text(ab.section_title) || "About Me")}</h2>
+    <div class="${layout}">
+${photo}      <div class="prose">
+${indent(markdown(ab.text, "{P}"), 8)}
+      </div>
+    </div>
+  </div>
+</section>
+`;
+    }
+
+    const cols = [];
+    for (const k of ["reviews", "newsletter"]) {
+      const blk = obj(h[k]);
+      if (text(blk.title)) {
+        cols.push(`      <div>\n        <h2 class="section-title">${esc(blk.title)}</h2>\n` +
+          `        <div class="coming-soon">${markdown(blk.text, "{P}")}</div>\n      </div>`);
+      }
+    }
+    const extra = cols.length
+      ? '\n<section class="section">\n  <div class="wrap">\n    <div class="two-col">\n' + cols.join("\n") + "\n    </div>\n  </div>\n</section>\n"
+      : "";
+
+    const middleWords = text(hero.middle).split(/\s+/).filter(Boolean)
+      .map((w) => `        <span class="g-epic">${esc(w)}</span>`).join("\n");
+    const body = `<section class="hero" aria-labelledby="hero-title">
+  <div class="wrap">
+    <p class="hero-welcome">${esc(text(hero.welcome))}</p>
+    <h1 class="hero-genres" id="hero-title">
+      <span class="g-romance">${esc(text(hero.left))}</span>
+      <span class="g-middle">
+${middleWords}
+        <span class="g-and">${esc(text(hero.middle_small))}</span>
+      </span>
+      <span class="g-suspense">${esc(text(hero.right))}</span>
+    </h1>
+  </div>
+</section>
+${recent}${about}${extra}`;
+    return this.shell({ p, title: "Home", body, current: "home", heroFonts: true });
+  }
+
+  contact_(p) {
+    const c = this.contact;
+    const email = text(this.settings.email);
+    const note = text(c.note) ? `    <div class="callout">\n      ${markdown(c.note, "{P}")}\n    </div>\n` : "";
+    const button = text(c.button_label);
+    const btn = button && email
+      ? `    <div class="btn-row btn-row-center">\n      <a class="btn" href="mailto:${esc(email)}">${esc(button)}</a>\n    </div>\n`
+      : "";
+    const direct = email
+      ? `    <p class="contact-direct">${inline(c.direct_text, "{P}")}<br>\n      <a class="email-big" href="mailto:${esc(email)}">${esc(email)}</a></p>\n`
+      : "";
+    const heading = text(c.heading) ? `    <h2 class="section-title">${esc(c.heading)}</h2>\n` : "";
+    const title = text(c.title) || "Contact";
+    const body = this.pageHero(title) + `
+
+<section class="section">
+  <div class="wrap wrap-narrow center">
+${note}${heading}    ${markdown(c.text, "{P}")}
+${btn}${direct}  </div>
+</section>
+`;
+    return this.shell({ p, title, body, current: "contact", description: text(c.description) });
+  }
+
+  progress_(p) {
+    const pr = Array.isArray(this.progress) ? { items: this.progress } : obj(this.progress);
+    const cards = [];
+    for (const it of arr(pr.items)) {
+      if (!it || typeof it !== "object" || !text(it.title)) continue;
+      const link = linkUrl(it.link, "{P}");
+      const title = link ? `<a href="${esc(link)}">${esc(it.title)}</a>` : esc(it.title);
+      let bar = "";
+      if (truthy(it.show_bar)) {
+        let pct = Number(it.percent || 0);
+        if (!Number.isFinite(pct)) pct = 0;
+        pct = Math.max(0, Math.min(100, pct));
+        bar = `\n  <div class="progress" style="--percent: ${pct}" aria-hidden="true"><div class="progress-fill"></div></div>`;
+      }
+      cards.push(`<article class="wip">\n  <h3>${title}</h3>\n  ${markdown(it.text, "{P}")}${bar}\n</article>`);
+    }
+    const listing = cards.length
+      ? '<div class="wip-list">\n' + indent(cards.join("\n\n"), 2) + "\n</div>"
+      : '<p class="coming-soon">Coming soon…</p>';
+    const title = text(pr.title) || "In Progress";
+    const body = this.pageHero(title, text(pr.eyebrow)) + `
+
+<section class="section">
+  <div class="wrap">
+${indent(listing, 4)}
+  </div>
+</section>
+`;
+    return this.shell({ p, title, body, current: "in-progress", description: text(pr.description) });
+  }
+
+  blog_(p) {
+    const posts = this.blog.filter((x) => x && typeof x === "object" && (text(x.title) || text(x.body)));
+    posts.sort((a, b) => (dateKey(a.date) < dateKey(b.date) ? 1 : dateKey(a.date) > dateKey(b.date) ? -1 : 0));
+    const used = new Set();
+    const arts = posts.map((post) => {
+      let pid = slugify(`${text(post.date)} ${text(post.title)}`);
+      while (used.has(pid)) pid += "-2";
+      used.add(pid);
+      const when = niceDate(post.date);
+      const dateHtml = when ? `  <p class="post-date"><time datetime="${esc(dateKey(post.date))}">${esc(when)}</time></p>\n` : "";
+      return `<article class="post" id="${pid}">\n${dateHtml}` +
+        `  <h2><a href="#${pid}">${esc(text(post.title))}</a></h2>\n` +
+        `  <div class="prose">\n${indent(markdown(post.body, "{P}"), 4)}\n  </div>\n</article>`;
+    });
+    const feed = arts.length
+      ? '<div class="post-feed">\n' + indent(arts.join("\n\n"), 2) + "\n</div>"
+      : '<p class="coming-soon">Coming soon…</p>';
+    const body = this.pageHero("Blog") + `
+
+<section class="section">
+  <div class="wrap">
+${indent(feed, 4)}
+  </div>
+</section>
+`;
+    return this.shell({ p, title: "Blog", body, current: "blog", description: "News and writing updates from author Sarah Buitendyk." });
+  }
+
+  page_(pg, p) {
+    const section = squash(pg.menu).includes("under") ? BOOKS_PAGE : null;
+    const parts = [this.pageHero(pg.title, text(pg.eyebrow), text(pg.intro))];
+    const key = text(pg.book_list) ? listKey(pg.book_list) : null;
+    const bodyMd = text(pg.body);
+    if (bodyMd || text(pg.photo)) {
+      const content = markdown(bodyMd, "{P}");
+      let inner;
+      if (text(pg.photo)) {
+        inner = '<div class="feature">\n  <div class="feature-media">\n' +
+          `    <img class="portrait" src="${esc(assetUrl(pg.photo, "{P}"))}" alt="${esc(text(pg.photo_description) || pg.title)}">\n  </div>\n` +
+          `  <div class="prose">\n${indent(content, 4)}\n  </div>\n</div>`;
+      } else if (truthy(pg.centered)) {
+        inner = `<div class="prose prose-center center">\n${indent(content, 2)}\n</div>`;
+      } else {
+        inner = `<div class="prose prose-center">\n${indent(content, 2)}\n</div>`;
+      }
+      parts.push(`\n<section class="section">\n  <div class="wrap">\n${indent(inner, 4)}\n  </div>\n</section>`);
+    }
+    if (key) {
+      const heading = text(pg.book_list_heading);
+      const alt = bodyMd ? " section-alt" : "";
+      const head = heading ? `    <h2 class="section-title">${esc(heading)}</h2>\n` : "";
+      parts.push(`\n<section class="section${alt}">\n  <div class="wrap">\n${head}${indent(this.bookGrid(key), 4)}\n  </div>\n</section>`);
+    }
+    return this.shell({ p, title: pg.title, body: parts.join("\n") + "\n", current: pg.slug, section,
+      description: text(pg.description), noindex: pg.hidden });
+  }
+
+  book_(bk, p) {
+    let cover = this.cover(bk);
+    const buy = linkUrl(bk.buy, "{P}");
+    cover = buy && !text(bk.download)
+      ? `<a class="feature-media" href="${esc(buy)}">\n${indent(cover, 2)}\n</a>`
+      : `<div class="feature-media">\n${indent(cover, 2)}\n</div>`;
+    const content = markdown(bk.description, "{P}") || '<p class="coming-soon">More about this book coming soon…</p>';
+    let extra = "";
+    if (text(bk.download)) {
+      extra += '\n<h2>Docs Download:</h2>\n<div class="download">\n' +
+        `  <span class="download-name">${esc(bk.title)}</span>\n` +
+        `  ${this.secondButton(bk)}\n</div>`;
+      if (text(bk.download_note)) extra += `\n<p><strong>${inline(bk.download_note, "{P}")}</strong></p>`;
+    } else {
+      extra += `\n<div class="btn-row">\n  ${this.secondButton(bk)}\n</div>`;
+    }
+    const body = this.pageHero(bk.title, text(bk.label)) + `
+
+<section class="section">
+  <div class="wrap">
+    <div class="feature">
+${indent(cover, 6)}
+      <div class="prose">
+${indent(content + extra, 8)}
+      </div>
+    </div>
+  </div>
+</section>
+`;
+    return this.shell({ p, title: bk.title, body, current: `book-${bk.id}`, section: BOOKS_PAGE,
+      description: text(bk.card_text).slice(0, 200), noindex: bk.hidden });
+  }
+
+  notFound_(p) {
+    const body = this.pageHero("Page not found") + `
+
+<section class="section">
+  <div class="wrap center">
+    <p>Sorry, that page couldn’t be found.</p>
+    <div class="btn-row btn-row-center"><a class="btn" href="{P}index.html">Go to the home page</a></div>
+  </div>
+</section>
+`;
+    return this.shell({ p, title: "Page not found", body, current: "404", noindex: true });
+  }
+
+  // -- addresses ---------------------------------------------------------------
+  // Returns { status, html } for a path like "/", "/about.html", "/books/igs-1.html".
+  render(pathname) {
+    let path = decodeURIComponent(pathname || "/");
+    const depth = Math.max(0, path.replace(/^\/+/, "").split("/").length - 1);
+    const p = "../".repeat(depth);
+    path = path.replace(/^\/+/, "").replace(/\.html$/, "");
+    if (path === "" || path === "index") return { status: 200, html: this.home_(p) };
+    if (path === "blog") return { status: 200, html: this.blog_(p) };
+    if (path === "contact") return { status: 200, html: this.contact_(p) };
+    if (path === "in-progress") return { status: 200, html: this.progress_(p) };
+    const bm = path.match(/^books\/([a-z0-9-]+)$/);
+    if (bm) {
+      const bk = this.books.find((b) => b.id === bm[1] && b.has_page);
+      if (bk) return { status: 200, html: this.book_(bk, p) };
+    } else if (/^[a-z0-9-]+$/.test(path)) {
+      const pg = this.pages.find((x) => x.slug === path);
+      if (pg) return { status: 200, html: this.page_(pg, p) };
+    }
+    return { status: 404, html: this.notFound_(p) };
+  }
+
+  // Every address on the site, for the static copy used by previews.
+  allPaths() {
+    return ["index.html", "blog.html", "contact.html", "in-progress.html",
+      ...this.pages.map((pg) => `${pg.slug}.html`),
+      ...this.books.filter((b) => b.has_page).map((b) => `books/${b.id}.html`)];
+  }
+}

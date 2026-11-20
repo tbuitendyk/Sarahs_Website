@@ -1,3 +1,4 @@
-# Built website (made by build.py; the host rebuilds it)
-_site/
-__pycache__/
+# Local test data and previews (not part of the site)
+.dev/
+_preview/
+node_modules/

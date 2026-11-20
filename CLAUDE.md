@@ -4,76 +4,104 @@ The website of **Sarah Buitendyk**, a young Christian author who writes clean co
 
 The site was moved here in November 2026 from WordPress.com (sarahbuitendykbooks.wordpress.com).
 
-**Sarah edits all the content herself** in a Pages CMS dashboard (app.pagescms.org), logging in with her email. She explicitly does not want to depend on GitHub or Claude for everyday edits. Claude's job is the design, the build and any new kinds of content. Whatever you add, keep it editable from the dashboard.
+**Sarah edits all the content herself at `/admin` on the live site**, with a password. She explicitly does not want to depend on GitHub, Claude or any other service for everyday edits, and she doesn't want to pay for anything. Claude's job is the design, the code and any new kinds of content. Whatever you add, make it editable in the admin.
 
 ## Working with Sarah
 
-- **Her words are hers. Copy them exactly.** Never paraphrase, shorten, summarise or "polish" her text, including blurbs on book cards. If you spot a typo, point it out and let her decide.
+- **Her words are hers. Copy them exactly.** Never paraphrase, shorten, summarise or "polish" her text. If you spot a typo, point it out and let her decide.
 - Explain what you changed in plain language, with no jargon.
-- After any visual change, build, preview, and show her a screenshot at desktop and phone widths.
-- She doesn't want to pay for anything: no paid services or plans.
-- Ask before big redesigns or adding third-party services.
+- After any visual change, run the site locally and show her a screenshot at desktop and phone widths.
+- Free only: no paid services or plans. Ask before adding any third-party service.
 
-## How the site works
+## How it works
+
+Cloudflare Pages, free plan. There's no build step.
 
 ```
-content/*.json      ALL words, settings and lists. Edited by Sarah through the dashboard
-.pages.yml          Dashboard settings: which boxes Sarah sees for each content file
-build.py            Turns content/*.json into the finished site in _site/ (Python standard library only)
-assets/css/style.css  All styling. Colours and fonts are CSS variables at the top
-assets/js/site.js   Mobile menu button
-assets/images/      Logo, favicons, photos; covers/ holds book covers. The dashboard uploads pictures here
-assets/downloads/   Free downloads (e.g. words-of-love.docx). The dashboard uploads files here
-_site/              Built output. Never edit, never commit (in .gitignore)
-SETUP.md            One-time setup for Cloudflare Pages + Pages CMS, written for non-developers
+functions/[[path]].js   Runs every request except /assets/* (see public/_routes.json): website pages,
+                        /files/*, /admin, /admin/login|logout and /api/admin/*
+src/render.js           Builds each page from the content (the design's HTML). Pages are rendered per visit
+src/store.js            Cloudflare KV (bound as SITE): content, 180-day backups, uploads
+src/auth.js             Password check, signed session cookie, wrong-password limit, password change
+src/admin-pages.js      Login page and admin shell HTML, plus the admin's security headers
+src/defaults.js         Starting content, used only until the first save. Live content is in KV, NOT in this repo
+public/                 Static files (Pages output directory)
+  assets/css, js, images, downloads   the website's design and built-in files
+  assets/admin/         The admin editor (no libraries):
+    admin.js            the app: sections, forms, lists, uploads, saving, history, password
+    schema.js           which boxes each section shows (keys must match what render.js reads)
+    editor.js           word-processor text box; converts its HTML to Markdown
+    markdown.js         Markdown -> HTML; shared by render.js and the editor
+    api.js              calls /api/admin/*; demo mode for previews (window.SB_DEMO)
+  _routes.json          /assets/* is served directly; everything else goes to the function
+tools/dev-server.mjs    Local copy of Cloudflare (Node 18+), with KV kept in .dev/kv.json
+tools/export-static.mjs Saves a static copy of the site plus a practice admin, for previews
+SETUP.md                One-time Cloudflare setup, written for non-developers
 ```
 
-Build and preview:
+Run locally:
 
 ```bash
-python3 build.py
+ADMIN_PASSWORD=pick-a-test-password node tools/dev-server.mjs
 ```
 
-```bash
-python3 -m http.server 8000 -d _site
-```
+Then open http://localhost:8788 and http://localhost:8788/admin. Use `KV_FILE=memory` for a throwaway store.
 
-The host (Cloudflare Pages) runs `python3 build.py` with output directory `_site` after every commit. That includes every save in the dashboard, since Pages CMS commits to the repo.
+## Content model
 
-What gets built:
-- `index.html`, `blog.html`, `contact.html` and `in-progress.html` come from `home.json`, `blog.json`, `contact.json` and `in-progress.json`.
-- One `<slug>.html` per entry in `pages.json`: About, My Books, IGS: Files, Anthologies, Short Stories, the hidden subscriber page, and any page Sarah adds.
-- `books/<id>.html` for each book in `books.json` that has a description or a download.
-- `404.html`.
+KV key `content` = `{ data, version, savedAt }`, where `data` has:
+
+- `site`: name, tagline, author, email, description, copyright
+- `home`: hero, recent release, about, reviews, newsletter
+- `contact`
+- `progress`: title, eyebrow and `items` (each with `show_bar` and `percent` 0–100)
+- `blog`: posts with title, date (yyyy-mm-dd) and body
+- `pages`: title, slug, menu (`main`, `under-my-books`, `no`), menu_position, body, book_list, hidden…
+- `books`: title, id, label, cover, buy, show_on[], card_text, description, download, hidden…
+
+Rich-text fields are Markdown: `##` heading, `###` big line, `>` quote (verse style when its last line is a Bible reference such as "John 1:5"), lists, `**bold**`, `*italic*`, links.
+
+Addresses:
+- `/` is home; `/blog.html`, `/contact.html` and `/in-progress.html` are built in.
+- `/<slug>.html` is a page.
+- `/books/<id>.html` is a book's page; it exists only if the book has a description or a download.
+- `/files/<name>` serves an upload.
+
+Menu positions: Home 10, Blog 20, Contact 40, In Progress 50, About 30, My Books 60. Pages "under My Books" hang off the page with slug `books`.
 
 ## Rules for every change
 
-- **Keep three things in sync:** the fields in `.pages.yml`, the keys in `content/*.json`, and what `build.py` reads. If you add a field, add it to all three. Check with `ruby -ryaml -e 'YAML.safe_load(File.read(".pages.yml"))'` that the config is valid YAML.
-- **Don't hard-code Sarah's words in `build.py` or the HTML.** Text belongs in `content/*.json`, so she can edit it. The only fixed labels are small UI words (Learn more, Buy the book, Download, Docs Download:, Coming soon…).
-- **Never edit `_site/`.** Change `build.py`, `assets/` or `content/` and rebuild.
-- **Build must never crash on odd content.** Sarah may leave fields empty, type numbers as text, and so on. Read fields with `text()`/`truthy()`, skip entries without a title, and print a `WARNING:` rather than failing. Invalid JSON is the one case that stops the build, and then the live site simply keeps the previous version.
-- **Relative paths only** in the built HTML. Pages at the root use `assets/...`; pages in `books/` use `../`. The `{P}` placeholder in `build.py` is replaced with the right prefix. The dashboard saves uploads as `/assets/...`, and `asset_url()` makes them relative. The one exception is `404.html`, which uses root paths.
-- **Every book card has "Learn more" and "Buy the book"** (Sarah asked for this). Free stories with a download show "Download" instead. A button with `href="#"` is greyed out: no page yet, or no buy link yet.
-- **Never link to the hidden subscriber page** (`subscriber-stories-iud5ltq5.html`, `"hidden": true` in `pages.json`) from anywhere. Hidden pages and hidden books get `noindex`. Words of Love is a hidden book.
-- Every image needs `alt` text. Keep images under about 300 KB.
+- **Keep `schema.js` (admin boxes) and `render.js` (what the site reads) in sync.** Add new fields to both. If the starting content should have them, add them to `defaults.js` too.
+- **Don't hard-code Sarah's words** in templates. Only small UI labels are fixed (Learn more, Buy the book, Download, Docs Download:, Coming soon…).
+- **Rendering must never crash on odd content.** Use `text()`, `truthy()` and the `obj()`/`arr()` guards, and skip entries without a title.
+- **Escape everything** with `esc()` or `inline()`/`markdown()`. Raw HTML from content is escaped, apart from a few harmless tags.
+- **Relative links in the site's HTML.** The `{P}` placeholder in render.js becomes `""` or `../` depending on page depth. Uploads are saved as `/files/x` or `/assets/...`, and `assetUrl()` makes them relative.
+- **Security:**
+  - Keep the admin CSP: no inline scripts or `style=""` attributes in admin code (set `.style.x` in JS instead).
+  - Every `/api/admin/*` request needs the login cookie, and writes also need the `X-SB-Admin: 1` header.
+  - Uploads are limited to the extensions in `store.js` (no html or svg).
+  - Never link to hidden pages (`hidden: true`); they and hidden books get `noindex`.
+- **Free-plan limits:** about 10 ms of CPU per request (so PBKDF2 uses 20,000 rounds), KV allows 1,000 writes a day, and uploads are limited to 10 MB.
+- **Test before committing:**
+  - Run the dev server.
+  - Check pages with curl or Playwright.
+  - Log in, edit, save and check the page changed.
+  - Check `/api/admin/*` returns 401 when logged out.
+- Every image needs `alt` text.
 
-## How Sarah's text is formatted
+## Previews
 
-Rich-text fields are saved as Markdown, and `build.py`'s `markdown()` turns them into HTML:
-- Heading 1 and 2 become a section heading. Heading 3 becomes a big display line (e.g. "Hi!"); on centred pages it's a centred italic tagline.
-- A quote whose last line is a Bible reference (`John 1:5`) shows in verse style. Any other quote is a boxed note.
-- Lists, bold, italic, links, images and dividers work as usual. Raw HTML is escaped, except a few harmless tags (`<u>`, `<br>`…).
-- Straight quotes become curly quotes.
+```bash
+node tools/export-static.mjs _preview
+```
 
-## The menu
-
-Built-in pages have fixed positions: Home 10, Blog 20, Contact 40, In Progress 50. Pages in `pages.json` set `menu` (`main`, `under-my-books`, `no`) and `menu_position`. About is 30 and My Books is 60. Under My Books: IGS: Files 10, Anthologies 20, Short Stories 30. "Under My Books" items hang off the page whose slug is `books`.
+This writes the site plus `admin-login.html` and `admin.html` (a practice admin where any password works and changes stay in the browser). That folder can be published as a private preview.
 
 ## Open items
 
-- **One-time setup isn't done yet.** The site isn't live, and the WordPress site is still public. See `SETUP.md`: make the repo private, connect Cloudflare Pages, connect Pages CMS and invite Sarah's email.
+- **One-time setup isn't done yet** (see `SETUP.md`). The site isn't live, and the WordPress site is still public.
 - **Words of Love has no cover.** The image was missing on WordPress too.
-- **The hidden subscriber page is unlisted, not locked.** Anyone with the link can open it.
+- **The hidden subscriber page is unlisted, not locked.** Its address is in `defaults.js`, so keep the repo private or change the address in the admin after launch.
 - **The contact form became an email link.** Sarah's original sentence ends "…send a message with the form below."; that part is left off because there's no form.
 - The **newsletter signup** and **reader reviews** sections still say "Coming soon…".
 - **IGS #3 and #4** are placeholders based on "Four stories".

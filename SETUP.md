@@ -1,62 +1,70 @@
-# One-time setup: put the site online and switch on Sarah's dashboard
+# One-time setup: put the site online with its admin page
 
-Do this **once**. It takes about 15 minutes and costs nothing. Whoever owns the
-GitHub account (`tbuitendyk`) does steps 1–3. After step 4, Sarah edits everything from
-her dashboard with just her email address, and never needs GitHub or Claude.
+Do this **once**. It takes about 15 minutes, all in the Cloudflare website, and costs nothing.
+After that, Sarah edits everything at **your-site-address/admin** with her password.
+She never needs GitHub or Claude.
 
-## 1. Make the repository private (recommended)
+Cloudflare sometimes renames menu items. If a name below doesn't match exactly, look for
+the closest one.
 
-This keeps the hidden subscriber page's address and the stories out of public view.
+## 1. Create a free Cloudflare account
 
-GitHub → the **Sarahs_Website** repository → **Settings** → **General** → scroll to
-**Danger Zone** → **Change visibility** → **Make private**.
+Go to **dash.cloudflare.com** and sign up. The free plan is all you need; no card is required.
 
-## 2. Put the site online with Cloudflare (free)
+## 2. Make a storage space for the site's content
 
-1. Create a free account at **dash.cloudflare.com**.
-2. Go to **Workers & Pages** → **Create** → **Pages** → **Connect to Git** (sometimes
-   labelled "Import an existing Git repository").
-3. Connect your GitHub account when asked, and pick **Sarahs_Website**.
-4. Fill in the settings:
-   - **Project name:** what you want in the address, e.g. `sarahsbooks` gives
-     `https://sarahsbooks.pages.dev`
-   - **Production branch:** the repository's branch (currently `claude/sarahs-website-nbke6r`)
-   - **Framework preset:** None
-   - **Build command:** `python3 build.py`
-   - **Build output directory:** `_site`
-5. Click **Save and Deploy**. After a minute or two the site is live at the address
-   above. From then on it updates by itself every time something is saved in the
-   dashboard.
+This is where the site keeps its words, pictures and uploads.
 
-Optional: under the project's **Custom domains**, an address like `books.buitendyk.ca`
-can be added for free by whoever manages the `buitendyk.ca` domain.
+1. In the left menu, open **Storage & Databases → KV** (in some dashboards it's
+   **Workers & Pages → KV**).
+2. Click **Create** (or "Create a namespace"), name it `sarahs-books`, and save.
 
-## 3. Switch on the dashboard (Pages CMS, free)
+## 3. Connect the website
 
-1. Go to **app.pagescms.org** and sign in with the GitHub account.
-2. When asked, install the Pages CMS app on the **Sarahs_Website** repository.
-3. Open **Sarahs_Website** in Pages CMS and choose the same branch as in step 2.
-   You'll see Books, Blog posts, Pages, Home page, In Progress, Contact page and Site
-   settings in the sidebar.
-4. Open the project's settings and find **Collaborators**. Invite **Sarah's email
-   address**.
+1. Open **Workers & Pages** and click **Create** (or "Create application").
+2. Choose the **Pages** option, then **Connect to Git** ("Import an existing Git repository").
+3. Sign in to GitHub when asked, and pick the **Sarahs_Website** repository.
+   This is the only time GitHub is needed.
+4. Fill in:
+   - **Project name:** this becomes the address. For example, `sarahsbooks` gives
+     `https://sarahsbooks.pages.dev`.
+   - **Production branch:** the repository's branch (currently `claude/sarahs-website-nbke6r`).
+   - **Framework preset:** None.
+   - **Build command:** leave empty. If Cloudflare insists, type `exit 0`.
+   - **Build output directory:** `public`.
+5. Click **Save and Deploy** and wait for it to finish.
 
-## 4. Sarah logs in
+## 4. Link the storage space and set the password
 
-Sarah opens the invitation email and logs in to **app.pagescms.org** with her email.
-That's all she needs from now on: change something, press **Save**, and the
-website updates itself a minute or two later.
+In the new project, open **Settings**:
 
-## What Sarah can do in the dashboard
+1. Under **Bindings**, click **Add**, then choose **KV namespace**:
+   - **Variable name:** `SITE` (exactly like that, in capitals)
+   - **KV namespace:** `sarahs-books`
+2. Under **Variables and Secrets**, click **Add**:
+   - **Type:** Secret
+   - **Variable name:** `ADMIN_PASSWORD`
+   - **Value:** the password Sarah will use to log in (at least 10 characters)
+3. Save. Then open **Deployments**, find the latest one, and choose **Retry deployment**,
+   so the site picks up these settings.
 
-- **Books:** add a book, upload its cover, add the buy link, and choose which lists it
-  shows on. Writing in "The book's own page" gives the book its own page and turns
-  on its Learn more button.
-- **Blog posts:** write, edit or delete posts.
-- **Pages:** edit any page's text, or add a new page and put it in the menu (Main menu
-  or Under My Books, at any position). A page can also be made hidden, like the
-  subscriber page.
-- **Home page, In Progress, Contact page:** change any of the words. In Progress has
-  a number from 0 to 100 for each progress bar.
-- **Site settings:** the site name, tagline, email address and footer line.
-- **Pictures and downloads:** upload them right inside the dashboard.
+## 5. Log in
+
+Open `https://<your-project-name>.pages.dev/admin`, type the password, and that's it.
+Sarah can change the password later inside the admin (**Password** in the side menu).
+
+---
+
+## Good to know
+
+- **Free plan limits:** about 100,000 page visits a day and 1,000 saves a day. That's far more than an author site needs.
+- **Your own web address:** in the Cloudflare project, open **Custom domains** to add one,
+  such as `books.buitendyk.ca`, if you control that domain. Cloudflare shows what to change.
+- **Keep the repository private** (GitHub → repository → Settings → Danger Zone → Change
+  visibility). Its code includes the hidden subscriber page's address. If it stays public,
+  change that page's "Web address name" in the admin after launch, so the old address stops working.
+- **Undo:** every save keeps the previous version for 6 months. To undo, go to **Undo & history** in the admin.
+- **Forgotten password:** in the Cloudflare project, change the `ADMIN_PASSWORD` secret
+  (Settings → Variables and Secrets) and retry the deployment. If Sarah had changed the password
+  in the admin, that one wins. In that case, ask Claude to clear it, or delete the `auth:password`
+  entry in the `sarahs-books` KV namespace.

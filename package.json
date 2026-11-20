@@ -1,0 +1,9 @@
+{
+  "name": "sarahs-books",
+  "private": true,
+  "type": "module",
+  "description": "Sarah Buitendyk author website with a password-protected /admin editor. Runs on Cloudflare Pages + KV.",
+  "scripts": {
+    "dev": "node tools/dev-server.mjs"
+  }
+}
