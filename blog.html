@@ -13,6 +13,7 @@
   <link rel="stylesheet" href="assets/css/style.css">
   <script>document.documentElement.className += " js";</script>
   <script src="assets/js/site.js" defer></script>
+  <script src="assets/js/blog.js" defer></script>
 </head>
 <body>
   <a class="skip-link" href="#main">Skip to content</a>
@@ -50,22 +51,17 @@
   <main id="main">
     <section class="page-hero">
       <div class="wrap">
-        <p class="eyebrow">News &amp; Updates</p>
         <h1>Blog</h1>
       </div>
     </section>
 
     <section class="section">
       <div class="wrap">
-        <!-- Newest post goes at the top of this list. -->
-        <ul class="post-list">
-          <li>
-            <time class="post-date" datetime="2025-06-20">June 20, 2025</time>
-            <h2><a href="blog/2025-06-20-update.html">June 20 2025 Update</a></h2>
-            <p>June 20th… I can’t believe that we are already in June! I have some very, very exciting news: one of my short stories was accepted into an anthology, and <strong>Rise of the Dragons</strong> is going quite well.</p>
-            <a class="back-link" href="blog/2025-06-20-update.html">Read more →</a>
-          </li>
-        </ul>
+        <!-- Blog posts are written in content/blog-posts.txt (instructions are at the top of that file).
+             They appear here automatically, newest first. -->
+        <div id="blog-posts" class="post-feed" data-source="content/blog-posts.txt">
+          <noscript><p class="coming-soon">Please turn on JavaScript to read the blog.</p></noscript>
+        </div>
       </div>
     </section>
   </main>

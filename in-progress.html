@@ -59,19 +59,18 @@
       <div class="wrap">
         <div class="wip-list">
           <article class="wip">
-            <span class="status">Draft three up next</span>
             <h3><a href="igs-files.html">IGS #1</a></h3>
             <p>IGS #1 is waiting to have draft three started.</p>
+            <!-- ✏️ To give IGS #1 a progress bar too, copy the two "progress" lines from IGS #2 below and paste them here. -->
           </article>
 
           <article class="wip">
-            <span class="status">Drafting</span>
             <h3><a href="igs-files.html">IGS #2</a></h3>
             <p>IGS #2 has almost 60,000/70,000 words written.</p>
-            <!-- To update the bar: width = words written ÷ goal × 100 (e.g. 60,000 ÷ 70,000 = 85%) -->
-            <div class="progress" role="progressbar" aria-label="IGS #2 progress" aria-valuemin="0" aria-valuemax="70000" aria-valuenow="60000" aria-valuetext="Almost 60,000 of 70,000 words">
-              <div class="progress-fill" style="width: 85%"></div>
-            </div>
+            <!-- ✏️ PROGRESS BAR: change the number after "--percent:" to move the bar.
+                 0 = empty, 50 = half way, 100 = full. Any number in between works. -->
+            <div class="progress" style="--percent: 85" aria-hidden="true">
+              <div class="progress-fill"></div></div>
           </article>
         </div>
       </div>

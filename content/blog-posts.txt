@@ -1,0 +1,25 @@
+// ===================================================================
+//  SARAH'S BLOG POSTS
+//
+//  Everything you write in this file shows up on the Blog page.
+//
+//  TO ADD A POST: write it at the TOP, just under these notes, so the
+//  newest post is first. Every post starts with a title line made of
+//  ===, the date, a | bar, the title, and === again, like this:
+//
+//      === December 1, 2026 | My Post Title ===
+//
+//  Then write the post underneath it. Leave an empty line between
+//  paragraphs.
+//
+//  OPTIONAL EXTRAS
+//      **bold words**
+//      *italic words*
+//      [link text](https://www.example.com)
+//      - a line starting with a dash becomes a bullet point
+//      ---   (a line with only three dashes draws a divider)
+//
+//  Lines that start with // (like these notes) never show on the site.
+//  If there are no posts, the Blog page says "Coming soon…".
+// ===================================================================
+
