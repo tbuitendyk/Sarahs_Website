@@ -190,7 +190,7 @@ function renderField(obj, f, onAnyChange) {
     }
     case "list": {
       if (!Array.isArray(obj[f.key])) obj[f.key] = [];
-      return h("div", { class: "field" }, h("span", { class: "field-label" }, f.label), listEditor(obj[f.key], f));
+      return h("div", { class: "field" }, h("span", { class: "field-label" }, f.label), f.help ? h("p", { class: "help" }, f.help) : null, listEditor(obj[f.key], f));
     }
     default: return h("p", {}, `(Unknown box type: ${f.type})`);
   }
@@ -316,7 +316,7 @@ async function choosePicture(onPick) {
 
 function listEditor(arr, cfg, sectionCfg) {
   const box = h("div", { class: "list" });
-  const summaryOf = (item) => item.title || "(no title yet)";
+  const summaryOf = (item) => (cfg.summary ? cfg.summary(item) : item.title) || "(no title yet)";
 
   function badges(item) {
     const out = [];
@@ -359,7 +359,7 @@ function listEditor(arr, cfg, sectionCfg) {
       const body = h("div", { class: "item-body", id: bodyId });
       for (const f of cfg.fields) {
         body.append(renderField(item, f, (key) => {
-          if (key === "title") titleEl.textContent = summaryOf(item);
+          if (key === "title" || cfg.summary) titleEl.textContent = summaryOf(item);
           if (["show_on", "menu", "hidden", "date", "subscribers_only"].includes(key)) badgeEl.replaceChildren(...badges(item));
         }));
       }
@@ -537,9 +537,22 @@ function renderApp() {
   refreshStatus();
 }
 
+function upgradeContent(data) {
+  for (const b of Array.isArray(data?.books) ? data.books : []) {
+    if (!b || typeof b !== "object") continue;
+    if (!Array.isArray(b.downloads)) b.downloads = [];
+    if (b.download) {
+      if (!b.downloads.some((d) => d && d.file === b.download)) b.downloads.unshift({ file: b.download, label: "" });
+      delete b.download;
+      if (b.download_heading === undefined) b.download_heading = "Docs Download:";
+    }
+  }
+  return data;
+}
+
 async function loadContent() {
   const res = await api.loadContent();
-  state.data = res.data;
+  state.data = upgradeContent(res.data);
   state.version = res.version;
   state.savedAt = res.savedAt;
   state.savedJSON = JSON.stringify(res.data);

@@ -729,3 +729,7 @@ a:hover > .cover-placeholder { transform: translateY(-3px); }
 .lock-row input:focus { outline: 3px solid var(--gold-deep); outline-offset: 1px; }
 .lock-error { margin: 0 0 0.75rem; padding: 0.6rem 0.8rem; font-size: 0.95rem; color: #9b2c12; background: #fde8e2; border-radius: var(--radius); }
 .lock-signup { margin-top: 3rem; }
+
+/* Several download files (PDF, Word, EPUB) for one story */
+.downloads { display: grid; gap: 0.75rem; }
+.downloads + p { margin-top: 1rem; }

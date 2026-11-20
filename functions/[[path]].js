@@ -194,7 +194,7 @@ async function lockedFile(request, env, path) {
   const site = new Site(data);
   if (!site.isProtectedFile(path)) return null;
   if (await auth.isSubscriber(request, env, site.subscriberPassword())) return null;
-  const book = site.books.find((b) => String(b.download || "").replace(/^\/+/, "") === path.replace(/^\/+/, ""));
+  const book = site.bookForFile(path);
   const target = book && book.has_page ? `/books/${book.id}.html` : "/";
   return new Response(null, { status: 303, headers: { location: target, "cache-control": "private, no-store" } });
 }

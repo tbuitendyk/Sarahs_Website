@@ -228,7 +228,8 @@ export default {
       ],
       "card_text": "Books for Bibles Press presents its first anthology, featuring how God’s love shines even in the darkest places. Ten young authors showcase their talents in thought provoking stories, splashing the pages with rays of light.",
       "description": "## Stories include:\n\n- Realizing God wants everyone to be His child, no matter their circumstances\n- A young woman discovering what her ministry is\n- Rediscovering one’s passion in a very unique way\n- A Bible character discovering what it means to follow God\n- Traveling to another country and the hardships of learning to become a missionary\n- Showing someone God’s love even when it is difficult\n- A journey from darkness to peace and forgiveness\n- Learning how God’s love guides one’s footsteps through the hills and valleys of life\n- Bringing a ray of sunshine to injured soldiers\n- A ride on the Titanic\n\n> “And the light shineth in darkness; and the darkness comprehended it not.”\\\n> John 1:5\n\nBooks for Bibles Press presents its first anthology, featuring how God’s love shines even in the darkest places. Ten young authors showcase their talents in thought provoking stories, splashing the pages with rays of light.\n\n> Books for Bibles is an organization dedicated to selling books to buy Bibles for those who might not have easy access to them. When you buy a book, you give a Bible! We have yearly anthologies on a multitude of topics in which any aspiring author may participate. To find out more, please check out our website at [booksforbibles.wordpress.com](https://booksforbibles.wordpress.com).",
-      "download": "",
+      "downloads": [],
+      "download_heading": "Docs Download:",
       "download_note": "",
       "hidden": false,
       "subscribers_only": false
@@ -244,7 +245,8 @@ export default {
       ],
       "card_text": "",
       "description": "IGS #1 is waiting to have draft three started.",
-      "download": "",
+      "downloads": [],
+      "download_heading": "Docs Download:",
       "download_note": "",
       "hidden": false,
       "subscribers_only": false
@@ -260,7 +262,8 @@ export default {
       ],
       "card_text": "",
       "description": "",
-      "download": "",
+      "downloads": [],
+      "download_heading": "Docs Download:",
       "download_note": "",
       "hidden": false,
       "subscribers_only": false
@@ -276,7 +279,8 @@ export default {
       ],
       "card_text": "",
       "description": "",
-      "download": "",
+      "downloads": [],
+      "download_heading": "Docs Download:",
       "download_note": "",
       "hidden": false,
       "subscribers_only": false
@@ -292,7 +296,8 @@ export default {
       ],
       "card_text": "",
       "description": "",
-      "download": "",
+      "downloads": [],
+      "download_heading": "Docs Download:",
       "download_note": "",
       "hidden": false,
       "subscribers_only": false
@@ -308,7 +313,13 @@ export default {
       ],
       "card_text": "Words of Love is a Biblical Fiction Fantasy story.",
       "description": "Words of Love is a Biblical Fiction Fantasy story.\n\nBarra is a mother in desperate need of help. Her daughter has been plagued by demons for years, and she and her husband have spent all they can to try and help their daughter.\n\nThey have lost hope. Barra is living in darkness and despair.\n\nIt isn’t until Barra meets a mysterious man named Isoa that she begins to believe, and when she begins to see light.\n\nBarra is the woman who goes to Jesus, who’s daughter was healed.\n\nContent Labels – The daughter is demon possessed, but it’s not described too much.",
-      "download": "/assets/downloads/words-of-love.docx",
+      "downloads": [
+        {
+          "file": "/assets/downloads/words-of-love.docx",
+          "label": ""
+        }
+      ],
+      "download_heading": "Docs Download:",
       "download_note": "Other downloads are currently unavailable.",
       "hidden": true,
       "subscribers_only": true

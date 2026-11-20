@@ -61,7 +61,9 @@ KV key `content` = `{ data, version, savedAt }`, where `data` has:
 - `progress`: title, eyebrow and `items` (each with `show_bar` and `percent` 0–100)
 - `blog`: posts with title, date (yyyy-mm-dd) and body
 - `pages`: title, slug, menu (`main`, `under-my-books`, `no`), menu_position, body, book_list, signup, unlock_box, subscribers_only, hidden…
-- `books`: title, id, label, cover, buy, show_on[], card_text, description, download, subscribers_only, hidden…
+- `books`: title, id, label, cover, buy, show_on[], card_text, description, downloads[] (`{file, label}`; label defaults to PDF / Word document / EPUB from the file type), download_heading (default "Docs Download:"), download_note, subscribers_only, hidden…
+  - An older single `download` string is still read; the admin moves it into `downloads` when it loads.
+  - With one file, a card's Download button downloads it; with several, it opens the book's page, which lists one Download button per file.
 - `home.newsletter.show_signup` and `contact.show_signup` place the sign-up form.
 
 ## Newsletter (Kit) and the subscriber lock
@@ -76,7 +78,7 @@ KV key `content` = `{ data, version, savedAt }`, where `data` has:
 - Pages and books with `subscribers_only` render `lockedView()` until the visitor has entered `newsletter.subscriber_password` at `POST /subscribers/unlock`.
 - Unlocking sets the `__Host-sb_sub` cookie for `remember_days` days (1–365, default 30), signed with the admin secret plus the password. After that, or once the password changes, the visitor must enter it again.
 - Matching ignores capital letters and surrounding spaces. Wrong tries are limited to 10 per 15 minutes per address (`subtries:`).
-- Downloads of subscriber books (`/assets/downloads/*` and `/files/*`) also need the cookie. That's why `public/_routes.json` sends `/assets/downloads/*` through the function.
+- Every download file of a subscriber book (`/assets/downloads/*` and `/files/*`) also needs the cookie. That's why `public/_routes.json` sends `/assets/downloads/*` through the function.
 - Locked responses are `private, no-store` and `noindex`.
 - With no subscriber password set, locked pages say "This page isn't open yet."
 - Pages with `unlock_box` show an "Already a subscriber?" password box. It posts `next` (the subscriber page) and `back` (this page), so a wrong password shows the error where it was typed. Once unlocked, the box becomes an "Open the subscriber stories" button. Otherwise the box section starts `hidden`, and `public/assets/js/subscriber-box.js` shows it only on devices where Kit recorded a sign-up (localStorage `cksubscribed-*`, or Kit's `ckjs:submission:complete` event right after signing up). It is also shown after a wrong try (`?wrong=1`). These pages vary per visitor, so they are `private, no-store`. The public Short Stories page has it.
@@ -86,7 +88,7 @@ Rich-text fields are Markdown: `##` heading, `###` big line, `>` quote (verse st
 Addresses:
 - `/` is home; `/blog.html`, `/contact.html` and `/in-progress.html` are built in.
 - `/<slug>.html` is a page.
-- `/books/<id>.html` is a book's page; it exists only if the book has a description or a download.
+- `/books/<id>.html` is a book's page; it exists only if the book has a description or at least one download.
 - `/files/<name>` serves an upload.
 
 Menu positions: Home 10, Blog 20, Contact 40, In Progress 50, About 30, My Books 60. Pages "under My Books" hang off the page with slug `books`.
@@ -94,7 +96,7 @@ Menu positions: Home 10, Blog 20, Contact 40, In Progress 50, About 30, My Books
 ## Rules for every change
 
 - **Keep `schema.js` (admin boxes) and `render.js` (what the site reads) in sync.** Add new fields to both. If the starting content should have them, add them to `defaults.js` too.
-- **Don't hard-code Sarah's words** in templates. Only small UI labels are fixed (Learn more, Buy the book, Download, Docs Download:, Coming soon…).
+- **Don't hard-code Sarah's words** in templates. Only small UI labels are fixed (Learn more, Buy the book, Download, the file-type names PDF / Word document / EPUB (for e-readers), Coming soon…).
 - **Rendering must never crash on odd content.** Use `text()`, `truthy()` and the `obj()`/`arr()` guards, and skip entries without a title.
 - **Escape everything** with `esc()` or `inline()`/`markdown()`. Raw HTML from content is escaped, apart from a few harmless tags.
 - **Relative links in the site's HTML.** The `{P}` placeholder in render.js becomes `""` or `../` depending on page depth. Uploads are saved as `/files/x` or `/assets/...`, and `assetUrl()` makes them relative.

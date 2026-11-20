@@ -62,6 +62,13 @@ export function indent(s, n) {
   return String(s).split("\n").map((ln) => (ln.trim() ? pad + ln : ln)).join("\n");
 }
 const obj = (v) => (v && typeof v === "object" && !Array.isArray(v) ? v : {});
+
+// What a download is called on its button, from its file type.
+const FORMAT_NAMES = { pdf: "PDF", doc: "Word document", docx: "Word document", epub: "EPUB (for e-readers)", txt: "Text file" };
+export function formatName(file) {
+  const ext = (String(file || "").toLowerCase().match(/\.([a-z0-9]+)(?:[?#].*)?$/) || [])[1] || "";
+  return FORMAT_NAMES[ext] || (ext ? ext.toUpperCase() : "File");
+}
 const arr = (v) => (Array.isArray(v) ? v : []);
 
 // ---------------------------------------------------------------- the site
@@ -109,7 +116,16 @@ export class Site {
       bk.id = id;
       bk.lists = asList(bk.show_on).map(listKey).filter(Boolean);
       bk.hidden = truthy(bk.hidden);
-      bk.has_page = Boolean(text(bk.description) || text(bk.download));
+      // Download files: the "downloads" list (one per format), plus an older single "download" if present.
+      bk.files = [];
+      for (const d of arr(bk.downloads)) {
+        const file = text(obj(d).file);
+        if (file && !bk.files.some((f) => f.file === file)) bk.files.push({ file, label: text(obj(d).label) || formatName(file) });
+      }
+      if (text(bk.download) && !bk.files.some((f) => f.file === text(bk.download))) {
+        bk.files.push({ file: text(bk.download), label: formatName(bk.download) });
+      }
+      bk.has_page = Boolean(text(bk.description) || bk.files.length);
       this.books.push(bk);
     }
   }
@@ -240,9 +256,10 @@ ${this.footer(p)}</body>
   }
 
   secondButton(bk) {
-    if (text(bk.download)) {
-      return `<a class="btn" href="${esc(assetUrl(bk.download, "{P}"))}" download>Download</a>`;
+    if (bk.files.length === 1) {
+      return `<a class="btn" href="${esc(assetUrl(bk.files[0].file, "{P}"))}" download>Download</a>`;
     }
+    if (bk.files.length > 1) return `<a class="btn" href="${this.bookHref(bk)}">Download</a>`;
     const buy = linkUrl(bk.buy, "{P}") || "#";
     return `<a class="btn" href="${esc(buy)}">Buy the book</a>`;
   }
@@ -375,7 +392,13 @@ ${this.footer(p)}</body>
   // Downloads of "Subscribers only" books (e.g. "assets/downloads/words-of-love.docx" or "files/x.pdf").
   isProtectedFile(pathname) {
     const want = String(pathname || "").replace(/^\/+/, "");
-    return this.books.some((b) => truthy(b.subscribers_only) && text(b.download).replace(/^\/+/, "") === want);
+    return this.books.some((b) => truthy(b.subscribers_only) && b.files.some((f) => f.file.replace(/^\/+/, "") === want));
+  }
+
+  // The book a download file belongs to.
+  bookForFile(pathname) {
+    const want = String(pathname || "").replace(/^\/+/, "");
+    return this.books.find((b) => b.files.some((f) => f.file.replace(/^\/+/, "") === want)) || null;
   }
 
   pageHero(title, eyebrow = "", lede = "") {
@@ -623,15 +646,23 @@ ${indent(feed, 4)}
     }
     let cover = this.cover(bk);
     const buy = linkUrl(bk.buy, "{P}");
-    cover = buy && !text(bk.download)
+    cover = buy && !bk.files.length
       ? `<a class="feature-media" href="${esc(buy)}">\n${indent(cover, 2)}\n</a>`
       : `<div class="feature-media">\n${indent(cover, 2)}\n</div>`;
     const content = markdown(bk.description, "{P}") || '<p class="coming-soon">More about this book coming soon…</p>';
     let extra = "";
-    if (text(bk.download)) {
-      extra += '\n<h2>Docs Download:</h2>\n<div class="download">\n' +
-        `  <span class="download-name">${esc(bk.title)}</span>\n` +
-        `  ${this.secondButton(bk)}\n</div>`;
+    if (bk.files.length) {
+      // Older content has no heading field: keep Sarah's original "Docs Download:" there.
+      const heading = bk.download_heading === undefined ? "Docs Download:" : text(bk.download_heading);
+      if (heading) extra += `\n<h2>${esc(heading)}</h2>`;
+      extra += '\n<div class="downloads">';
+      for (const f of bk.files) {
+        extra += '\n  <div class="download">\n' +
+          `    <span class="download-name">${esc(bk.title)} <small>${esc(f.label)}</small></span>\n` +
+          `    <a class="btn" href="${esc(assetUrl(f.file, "{P}"))}" download aria-label="Download ${esc(bk.title)} as ${esc(f.label)}">Download</a>\n` +
+          "  </div>";
+      }
+      extra += "\n</div>";
       if (text(bk.download_note)) extra += `\n<p><strong>${inline(bk.download_note, "{P}")}</strong></p>`;
     } else {
       extra += `\n<div class="btn-row">\n  ${this.secondButton(bk)}\n</div>`;
