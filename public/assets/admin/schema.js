@@ -16,7 +16,8 @@ export const BOOK_FIELDS = [
   { key: "title", label: "Title", type: "string", required: true },
   { key: "label", label: "Small gold label", type: "string", help: "Optional words above the title, e.g. “IGS: Files” or “Anthology · Books for Bibles Press”." },
   { key: "cover", label: "Cover picture", type: "image", help: "Leave empty for a dark “Cover coming soon” cover." },
-  { key: "buy", label: "Buy link", type: "url", help: "Where people can buy the book (copy the address from Amazon, etc.). Leave empty and the Buy the book button stays greyed out." },
+  { key: "buy", label: "Buy link", type: "url", help: "Where people can buy the book (copy the address from Amazon, etc.). Leave it empty and the Buy the book button shows greyed out. Stories with download files show a Download button instead of Buy the book." },
+  { key: "hide_buy", label: "Don’t show a Buy the book button for this book (for example, while it’s far from finished)", type: "boolean" },
   { key: "show_on", label: "Show this book on", type: "multiselect", choices: LIST_CHOICES, help: "Books appear on each list in the order of this Books section. My Books is for books and anthologies, not short stories." },
   { key: "card_text", label: "Text under the cover", type: "text", help: "Optional words shown under the cover on the book lists." },
   { key: "description", label: "The book’s own page", type: "rich", help: "Write anything here and the book gets its own page, and its Learn more button turns on. " + RICH_HELP },
@@ -71,7 +72,7 @@ export const SECTIONS = [
     id: "books", label: "Books", kind: "list", key: "books", fields: BOOK_FIELDS,
     intro: "Every book on the site. Books show on the lists in this order, so keep the newest at the top.",
     addLabel: "Add a book", addAt: "start",
-    newItem: () => ({ title: "New book", id: "", label: "", cover: "", buy: "", show_on: ["my-books"], card_text: "", description: "", downloads: [], download_heading: "Docs Download:", download_note: "", subscribers_only: false, hidden: false }),
+    newItem: () => ({ title: "New book", id: "", label: "", cover: "", buy: "", show_on: ["my-books"], hide_buy: false, card_text: "", description: "", downloads: [], download_heading: "Docs Download:", download_note: "", subscribers_only: false, hidden: false }),
     pageUrl: (b, slugify) => ((b.description || b.download || (b.downloads || []).some((d) => d && d.file)) ? `/books/${slugify(b.id || b.title)}.html` : null),
   },
   {

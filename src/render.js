@@ -260,6 +260,7 @@ ${this.footer(p)}</body>
       return `<a class="btn" href="${esc(assetUrl(bk.files[0].file, "{P}"))}" download>Download</a>`;
     }
     if (bk.files.length > 1) return `<a class="btn" href="${this.bookHref(bk)}">Download</a>`;
+    if (truthy(bk.hide_buy)) return ""; // Sarah turned the Buy the book button off for this book
     const buy = linkUrl(bk.buy, "{P}") || "#";
     return `<a class="btn" href="${esc(buy)}">Buy the book</a>`;
   }
@@ -272,7 +273,8 @@ ${this.footer(p)}</body>
     const parts = ['<article class="book-card">', indent(cover, 2), `  <h3>${esc(bk.title)}</h3>`];
     if (text(bk.label)) parts.push(`  <p class="book-meta">${esc(bk.label)}</p>`);
     if (text(bk.card_text)) parts.push(`  <p>${inline(bk.card_text, "{P}")}</p>`);
-    const second = opts.noDownloads && bk.files.length ? "" : `    ${this.secondButton(bk)}`;
+    const button = opts.noDownloads && bk.files.length ? "" : this.secondButton(bk);
+    const second = button ? `    ${button}` : "";
     parts.push('  <div class="btn-row">',
       `    <a class="btn btn-outline" href="${learn}">Learn more</a>`,
       ...(second ? [second] : []),
@@ -649,7 +651,7 @@ ${indent(feed, 4)}
     }
     let cover = this.cover(bk);
     const buy = linkUrl(bk.buy, "{P}");
-    cover = buy && !bk.files.length
+    cover = buy && !bk.files.length && !truthy(bk.hide_buy)
       ? `<a class="feature-media" href="${esc(buy)}">\n${indent(cover, 2)}\n</a>`
       : `<div class="feature-media">\n${indent(cover, 2)}\n</div>`;
     const content = markdown(bk.description, "{P}") || '<p class="coming-soon">More about this book coming soon…</p>';
@@ -668,7 +670,8 @@ ${indent(feed, 4)}
       extra += "\n</div>";
       if (text(bk.download_note)) extra += `\n<p><strong>${inline(bk.download_note, "{P}")}</strong></p>`;
     } else {
-      extra += `\n<div class="btn-row">\n  ${this.secondButton(bk)}\n</div>`;
+      const button = this.secondButton(bk);
+      if (button) extra += `\n<div class="btn-row">\n  ${button}\n</div>`;
     }
     const body = this.pageHero(bk.title, text(bk.label)) + `
 

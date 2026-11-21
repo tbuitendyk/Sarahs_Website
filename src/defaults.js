@@ -212,7 +212,7 @@ export default {
       "body": "",
       "book_list": "subscribers",
       "book_list_heading": "",
-      "hide_card_downloads": true,
+      "hide_card_downloads": false,
       "centered": false,
       "hidden": true,
       "description": "Short stories for Sarah Buitendyk’s email subscribers.",
@@ -228,6 +228,7 @@ export default {
       "label": "Anthology · Books for Bibles Press",
       "cover": "/assets/images/covers/light-through-his-love.jpg",
       "buy": "https://www.amazon.com/Light-Through-Love-Abigail-Creamer/dp/B0GPMDDFZ3",
+      "hide_buy": false,
       "show_on": [
         "my-books",
         "anthologies"
@@ -246,6 +247,7 @@ export default {
       "label": "IGS: Files",
       "cover": "",
       "buy": "",
+      "hide_buy": false,
       "show_on": [
         "igs-files"
       ],
@@ -263,6 +265,7 @@ export default {
       "label": "IGS: Files",
       "cover": "",
       "buy": "",
+      "hide_buy": false,
       "show_on": [
         "igs-files"
       ],
@@ -280,6 +283,7 @@ export default {
       "label": "IGS: Files",
       "cover": "",
       "buy": "",
+      "hide_buy": false,
       "show_on": [
         "igs-files"
       ],
@@ -297,6 +301,7 @@ export default {
       "label": "IGS: Files",
       "cover": "",
       "buy": "",
+      "hide_buy": false,
       "show_on": [
         "igs-files"
       ],
@@ -314,6 +319,7 @@ export default {
       "label": "Biblical Fiction Fantasy",
       "cover": "",
       "buy": "",
+      "hide_buy": false,
       "show_on": [
         "subscribers"
       ],
