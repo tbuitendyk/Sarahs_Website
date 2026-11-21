@@ -53,6 +53,7 @@ export const PAGE_FIELDS = [
     help: "Shows the books that have this list ticked under Books.",
   },
   { key: "book_list_heading", label: "Heading above the book list", type: "string" },
+  { key: "hide_card_downloads", label: "No Download buttons under the covers on this page (readers download from each story’s own page)", type: "boolean" },
   {
     key: "menu", label: "Show in the menu", type: "select",
     choices: [{ value: "main", label: "Main menu" }, { value: "under-my-books", label: "Under “My Books”" }, { value: "no", label: "Not in the menu" }],

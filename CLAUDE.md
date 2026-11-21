@@ -60,10 +60,11 @@ KV key `content` = `{ data, version, savedAt }`, where `data` has:
 - `contact`
 - `progress`: title, eyebrow and `items` (each with `show_bar` and `percent` 0–100)
 - `blog`: posts with title, date (yyyy-mm-dd) and body
-- `pages`: title, slug, menu (`main`, `under-my-books`, `no`), menu_position, body, book_list, signup, unlock_box, subscribers_only, hidden…
+- `pages`: title, slug, menu (`main`, `under-my-books`, `no`), menu_position, body, book_list, hide_card_downloads, signup, unlock_box, subscribers_only, hidden…
 - `books`: title, id, label, cover, buy, show_on[], card_text, description, downloads[] (`{file, label}`; label defaults to PDF / Word document / EPUB from the file type), download_heading (default "Docs Download:"), download_note, subscribers_only, hidden…
   - An older single `download` string is still read; the admin moves it into `downloads` when it loads.
   - With one file, a card's Download button downloads it; with several, it opens the book's page, which lists one Download button per file.
+  - A page with `hide_card_downloads` (the hidden subscriber page) leaves the Download button off its cards, so only Learn more shows. The book's own page keeps its Download buttons.
 - `home.newsletter.show_signup` and `contact.show_signup` place the sign-up form.
 
 ## Newsletter (Kit) and the subscriber lock

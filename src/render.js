@@ -264,24 +264,26 @@ ${this.footer(p)}</body>
     return `<a class="btn" href="${esc(buy)}">Buy the book</a>`;
   }
 
-  bookCard(bk) {
+  // opts.noDownloads: leave out the Download button (readers download from the story's own page).
+  bookCard(bk, opts = {}) {
     const learn = this.bookHref(bk);
     let cover = this.cover(bk);
     if (learn !== "#") cover = `<a class="cover-link" href="${learn}">\n${indent(cover, 2)}\n</a>`;
     const parts = ['<article class="book-card">', indent(cover, 2), `  <h3>${esc(bk.title)}</h3>`];
     if (text(bk.label)) parts.push(`  <p class="book-meta">${esc(bk.label)}</p>`);
     if (text(bk.card_text)) parts.push(`  <p>${inline(bk.card_text, "{P}")}</p>`);
+    const second = opts.noDownloads && bk.files.length ? "" : `    ${this.secondButton(bk)}`;
     parts.push('  <div class="btn-row">',
       `    <a class="btn btn-outline" href="${learn}">Learn more</a>`,
-      `    ${this.secondButton(bk)}`,
+      ...(second ? [second] : []),
       "  </div>", "</article>");
     return parts.join("\n");
   }
 
-  bookGrid(key) {
+  bookGrid(key, opts = {}) {
     const shown = this.books.filter((b) => b.lists.includes(key));
     if (!shown.length) return '<p class="coming-soon">Coming soon…</p>';
-    return '<div class="book-grid">\n' + indent(shown.map((b) => this.bookCard(b)).join("\n\n"), 2) + "\n</div>";
+    return '<div class="book-grid">\n' + indent(shown.map((b) => this.bookCard(b, opts)).join("\n\n"), 2) + "\n</div>";
   }
 
   // ---------------------------------------------------------------- newsletter (Kit)
@@ -634,7 +636,7 @@ ${indent(feed, 4)}
       const heading = text(pg.book_list_heading);
       const alt = bodyMd ? " section-alt" : "";
       const head = heading ? `    <h2 class="section-title">${esc(heading)}</h2>\n` : "";
-      parts.push(`\n<section class="section${alt}">\n  <div class="wrap">\n${head}${indent(this.bookGrid(key), 4)}\n  </div>\n</section>`);
+      parts.push(`\n<section class="section${alt}">\n  <div class="wrap">\n${head}${indent(this.bookGrid(key, { noDownloads: truthy(pg.hide_card_downloads) }), 4)}\n  </div>\n</section>`);
     }
     return this.shell({ p, title: pg.title, body: parts.join("\n") + "\n", current: pg.slug, section,
       description: text(pg.description), noindex: pg.hidden });
