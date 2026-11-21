@@ -9,12 +9,14 @@
 //   /api/backup/...                         full backups for the NAS (backup key or admin login; read only)
 //
 // Needs: a KV namespace bound as SITE, and an ADMIN_PASSWORD secret (see SETUP.md).
+// Optional: a D1 database bound as STATS for the admin's visitor counts (src/stats.js).
 
 import { Site } from "../src/render.js";
 import * as store from "../src/store.js";
 import * as auth from "../src/auth.js";
 import { loginPage, adminPage, ADMIN_HEADERS } from "../src/admin-pages.js";
 import * as backup from "../src/backup.js";
+import * as stats from "../src/stats.js";
 
 const json = (data, status = 200, extra = {}) =>
   new Response(JSON.stringify(data), {
@@ -28,6 +30,8 @@ export async function onRequest(context) {
   const { request, env } = context;
   const url = new URL(request.url);
   const path = url.pathname;
+  // Visitor counting runs after the answer has been sent, and its failures are ignored.
+  const later = (promise) => { if (context.waitUntil) context.waitUntil(promise); };
 
   if (!env.SITE) {
     return new Response("The site isn't finished being set up: the KV namespace isn't connected as SITE. See SETUP.md, step 2.",
@@ -43,14 +47,22 @@ export async function onRequest(context) {
     }
     if (path.startsWith("/api/admin/")) return await api(request, env, path.slice("/api/admin/".length));
     if (path.startsWith("/api/backup/")) return await backupApi(request, env, path.slice("/api/backup/".length));
-    if (path === "/subscribers/unlock") return await unlock(request, env);
-    if (path.startsWith("/files/")) return await serveFile(request, env, path.slice("/files/".length));
+    if (path === "/subscribers/unlock") return await unlock(request, env, later);
+    if (path.startsWith("/files/")) {
+      const name = path.slice("/files/".length);
+      const res = await serveFile(request, env, name);
+      if (res.status === 200 && !store.isImageName(name)) later(stats.trackDownload(request, env, path));
+      return res;
+    }
 
     // Real files in public/ (robots.txt, /assets/downloads/...) are served as they are,
     // except the downloads of "Subscribers only" stories, which need the subscriber password.
     if (path.startsWith("/assets/") || (/\.[a-z0-9]+$/i.test(path) && !path.endsWith(".html"))) {
       const locked = await lockedFile(request, env, path);
-      return locked || context.next();
+      if (locked) return locked;
+      const res = await context.next();
+      if (res.status === 200 && path.startsWith("/assets/downloads/")) later(stats.trackDownload(request, env, path));
+      return res;
     }
 
     if (request.method !== "GET" && request.method !== "HEAD") return new Response("Method not allowed", { status: 405 });
@@ -61,6 +73,7 @@ export async function onRequest(context) {
     const error = url.searchParams.get("wrong") === "1" ? "That password isn’t right. Please check your newsletter email and try again."
       : url.searchParams.get("wait") === "1" ? "Too many wrong passwords. Please wait 15 minutes, then try again." : "";
     const { status, html, locked } = site.render(path, { subscriber, error });
+    if (status === 200) later(stats.trackView(request, env, path));
     return new Response(request.method === "HEAD" ? null : html, {
       status,
       headers: {
@@ -144,6 +157,14 @@ async function api(request, env, route) {
   }
   // Backups: status, the NAS's backup key, and putting uploads back under their own names.
   if (route === "backup" && method === "GET") return json(await backup.status(env));
+  if (route === "stats" && method === "GET") {
+    const q = new URL(request.url).searchParams;
+    try {
+      return json(await stats.report(env, { from: q.get("from"), to: q.get("to"), by: q.get("by") }));
+    } catch (err) {
+      return json({ error: "Couldn’t read the visitor counts. Please try again." }, 500);
+    }
+  }
   if (route === "backup/key" && method === "POST") return json({ key: await backup.createKey(env) });
   if (route === "backup/key" && method === "DELETE") { await backup.deleteKey(env); return json({ ok: true }); }
   if (route.startsWith("files/") && method === "PUT") {
@@ -195,6 +216,11 @@ async function backupApi(request, env, route) {
   if (route === "manifest") return text(JSON.stringify(backup.manifest(await backup.collect(env), origin), null, 2), "application/json; charset=utf-8");
   if (route === "readme") return text(backup.readme(origin), "text/plain; charset=utf-8");
   if (route === "content") return text(JSON.stringify(await store.getContent(env), null, 2), "application/json; charset=utf-8");
+  if (route.startsWith("stats/")) {
+    const csv = await stats.monthCsv(env, route.slice(6));
+    if (csv === null) return json({ error: "No such month." }, 404);
+    return text(csv, "text/csv; charset=utf-8");
+  }
   if (route.startsWith("files/")) {
     const file = await store.getFile(env, decodeURIComponent(route.slice(6)));
     if (!file) return json({ error: "No such file." }, 404);
@@ -215,7 +241,7 @@ async function backupApi(request, env, route) {
 
 // ---------------------------------------------------------------- subscriber password
 
-async function unlock(request, env) {
+async function unlock(request, env, later = () => {}) {
   const url = new URL(request.url);
   if (request.method !== "POST") return Response.redirect(new URL("/", url), 303);
   let form;
@@ -236,6 +262,7 @@ async function unlock(request, env) {
   const password = site.subscriberPassword();
   if (await auth.subscriberPasswordMatches(form.get("password"), password)) {
     await auth.clearTries(env, ip, "subtries");
+    later(stats.trackUnlock(request, env));
     const cookie = await auth.subscriberCookie(env, password, site.newsletter.remember_days);
     return new Response(null, { status: 303, headers: { location: next, ...(cookie ? { "set-cookie": cookie } : {}) } });
   }

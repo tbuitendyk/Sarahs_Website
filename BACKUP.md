@@ -25,6 +25,7 @@ Windows, or by double-clicking on a Mac.
 | `files/` | Every picture and file uploaded in the admin |
 | `assets/` | The built-in pictures and downloads the content uses (covers, photos, Words of Love) |
 | `history/` | The earlier versions listed under **Undo & history** (kept 6 months on the site) |
+| `stats/` | Visitor counts, one spreadsheet (`.csv`) per month, once visitor counting is switched on. They're kept for reference: a restore doesn't put them back. |
 | `manifest.json`, `README.txt` | When it was made, what's in it, and how to restore it |
 
 Backups contain the subscriber password, so keep the backup folder private (admin only).
@@ -174,5 +175,7 @@ The files in `history/` are for reference. Open one in a text editor to read an 
 - **Admin side:** `GET backup` (status), `POST backup/key`, `DELETE backup/key` and `PUT files/<name>`
   (used by the restore script).
 - **Code:** `src/backup.js` decides what a backup holds. Anything new that's saved in KV must be added to `collect()`.
+- **Visitor counts:** they live in D1 (`STATS`), not KV. `collect()` lists one `stats/visitors-YYYY-MM.csv` per month
+  (`/api/backup/stats/YYYY-MM`). They aren't restored.
 - **Scripts:** the NAS scripts are POSIX `sh` and are tested with BusyBox (as on QNAP) and dash. They need
   only curl, tar and gzip.

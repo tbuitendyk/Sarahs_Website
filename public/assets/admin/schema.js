@@ -232,6 +232,7 @@ export const SECTIONS = [
       { key: "description", label: "Description for search engines", type: "text" },
     ],
   },
+  { id: "visitors", label: "Visitors", kind: "visitors", intro: "How many people visit the website, what they read and download, and where they come from." },
   { id: "files", label: "Pictures & files", kind: "files" },
   { id: "history", label: "Undo & history", kind: "history" },
   { id: "backups", label: "Backups", kind: "backups" },

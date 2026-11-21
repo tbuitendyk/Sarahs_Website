@@ -46,6 +46,7 @@ const realApi = {
   restore: (key) => call("POST", "restore", { key }),
   changePassword: (current, next) => call("POST", "password", { current, next }),
   backupStatus: () => call("GET", "backup"),
+  stats: (from, to, by) => call("GET", `stats?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&by=${by}`),
   createBackupKey: () => call("POST", "backup/key", {}),
   deleteBackupKey: () => call("DELETE", "backup/key"),
   async backupList() { return (await raw("/api/backup/list")).text(); },
@@ -89,6 +90,34 @@ function demoApi() {
       return this.saveContent(b.data);
     },
     async changePassword() { await wait(); return { ok: true }; },
+    // Made-up numbers for the practice admin, the same every time for the same day.
+    async stats(from, to, by) {
+      await ready; await wait(150);
+      const series = [];
+      const rand = (seed) => { const x = Math.sin(seed * 9301 + 49297) * 233280; return x - Math.floor(x); };
+      const step = by === "day" ? 86400000 : 3600000;
+      let days = 0;
+      for (let t = Date.parse(from + ":00:00Z"); t < Date.parse(to + ":00:00Z"); t += step) {
+        const d = new Date(t);
+        if (by === "hour" && d.getUTCHours() !== 18) continue;
+        days++;
+        const seed = Math.floor(t / 86400000);
+        const visitors = 4 + Math.floor(rand(seed) * 14) + (d.getUTCDay() === 0 ? 6 : 0);
+        const key = by === "day" ? d.toISOString().slice(0, 10) : d.toISOString().slice(0, 13);
+        series.push({ t: key, kind: "visitor", n: visitors }, { t: key, kind: "view", n: Math.round(visitors * (2 + rand(seed + 1))) });
+        if (rand(seed + 2) > 0.6) series.push({ t: key, kind: "download", n: 1 + Math.floor(rand(seed + 3) * 3) });
+        if (rand(seed + 4) > 0.8) series.push({ t: key, kind: "unlock", n: 1 });
+      }
+      const k = Math.max(1, days / 7);
+      const top = [
+        ["view", "/", 40], ["view", "/books.html", 22], ["view", "/igs-files.html", 17], ["view", "/about.html", 12],
+        ["view", "/books/light-through-his-love.html", 9], ["view", "/short-stories.html", 7], ["view", "/blog.html", 4],
+        ["download", "/assets/downloads/words-of-love.docx", 5],
+        ["ref", "google.com", 14], ["ref", "facebook.com", 8], ["ref", "instagram.com", 5], ["ref", "booksforbibles.wordpress.com", 3],
+        ["country", "MX", 20], ["country", "US", 16], ["country", "CA", 9], ["country", "GB", 3],
+      ].map(([kind, item, n]) => ({ kind, item, n: Math.round(n * k) }));
+      return { enabled: true, practice: true, by, series, top, since: from };
+    },
     async backupStatus() { await wait(100); return { key: demoKey ? { created: demoKey } : null, lastFinished: null, lastStarted: null }; },
     async createBackupKey() { await wait(); demoKey = new Date().toISOString(); return { key: "sbk_PRACTICE-ONLY-this-is-not-a-real-key" }; },
     async deleteBackupKey() { await wait(); demoKey = null; return { ok: true }; },

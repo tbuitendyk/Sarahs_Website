@@ -9,6 +9,7 @@ These decisions are made. Nothing has been set up yet.
 | **Hosting** | Cloudflare Pages, free plan. The site's code comes from this GitHub repository. Sarah's content is kept in Cloudflare (KV). |
 | **Address** | **https://sarah.buitendyk.ca**. `buitendyk.ca` is already ours, with its own DNS servers (`ns1`–`ns3.buitendyk.ca`), so nothing is bought and nothing moves to Cloudflare's DNS. Only one new line, `sarah`, is added. |
 | **Backups** | Every night to the NAS: see [BACKUP.md](BACKUP.md). |
+| **Visitor counts** | The admin's **Visitors** page uses a free Cloudflare database (D1). Switch it on in step 9, at launch or any time later. |
 | **Old site** | sarahbuitendykbooks.wordpress.com stays exactly as it is until the new site has been checked. |
 
 **Going back is always possible.** Nothing that exists today is changed:
@@ -172,6 +173,24 @@ until a subscriber password is chosen.
       (WordPress.com's automatic redirect is a paid upgrade, so it isn't used.)
    2. Later, set it to **Private** under **Settings → General → Privacy**, or delete it.
 
+## 9. Switch on visitor counting (at launch or any time later)
+
+This turns on the **Visitors** page in the admin: visitors per day and month, the most-read pages,
+downloads, the websites that send people, and countries. It's free and optional. The website works
+the same without it, and counting starts on the day it's switched on.
+
+1. In Cloudflare, open **Storage & Databases → D1 SQL Database** and click **Create** (or
+   "Create database"). Name it `sarahs-books-stats` and create it. Leave the other settings as they are.
+2. Open the Pages project, then **Settings → Bindings → Add → D1 database**:
+   - **Variable name:** `STATS` (exactly like that, in capitals)
+   - **D1 database:** `sarahs-books-stats`
+3. Save. Then open **Deployments**, find the latest one, and choose **Retry deployment**.
+4. **Check it:** visit the website on a phone or computer where you're *not* logged in to the admin
+   (visits while logged in aren't counted). Then open **Visitors** in the admin, where the visit shows up.
+
+The website sets up what it needs inside the database by itself. To switch counting off again, remove
+the `STATS` binding and retry the deployment. The numbers already counted stay in the database.
+
 ---
 
 ## Good to know
@@ -180,6 +199,8 @@ until a subscriber password is chosen.
   Its words and messages can be changed in the admin under **Newsletter**. Keep the two
   messages there the same as in Kit.
 - **Free plan limits:** about 100,000 page visits a day and 1,000 saves a day. That's far more than an author site needs.
+  - Visitor counting (D1) allows about 50,000 page views a day. On a busier day, counting pauses until the
+    next day, and the website keeps working.
 - **Undo:** every save keeps the previous version for 6 months. To undo, go to **Undo & history** in the admin.
 - **The admin password.** The first one is the `ADMIN_PASSWORD` secret typed in at step 4.
   - **To change it:** log in, open **Password** in the side menu, type the current password,

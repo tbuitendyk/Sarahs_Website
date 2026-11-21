@@ -12,8 +12,10 @@
 //   files/<name>      pictures and files uploaded in the admin
 //   assets/...        built-in pictures/files the content uses (from the site's design folder)
 //   history/<...>     earlier saved versions (Undo & history)
+//   stats/visitors-YYYY-MM.csv   visitor counts, one file per month (only when visitor counting is on)
 
 import * as store from "./store.js";
+import * as stats from "./stats.js";
 
 const enc = new TextEncoder();
 const KEY_RECORD = "auth:backup_key";
@@ -96,6 +98,8 @@ export async function collect(env) {
   const files = await store.listFiles(env);
   const history = await store.listAllBackups(env);
   const assets = referencedAssets(content.data);
+  let months = [];
+  try { months = await stats.months(env); } catch { /* visitor counts aren't essential to a backup */ }
   const items = [
     { kind: "readme", path: "README.txt", url: "/api/backup/readme" },
     { kind: "manifest", path: "manifest.json", url: "/api/backup/manifest" },
@@ -103,8 +107,9 @@ export async function collect(env) {
     ...files.map((f) => ({ kind: "file", path: `files/${f.name}`, size: f.size, url: `/api/backup/files/${f.name}` })),
     ...assets.map((a) => ({ kind: "asset", path: a.slice(1), url: `/api/backup/${a.slice(1)}` })),
     ...history.map((h) => ({ kind: "history", path: `history/${historyName(h)}`, url: `/api/backup/history/${h.key.slice("backup:".length)}` })),
+    ...months.map((m) => ({ kind: "stats", path: `stats/visitors-${m}.csv`, url: `/api/backup/stats/${m}` })),
   ];
-  return { content, files, history, assets, items };
+  return { content, files, history, assets, months, items };
 }
 
 // One line per item: kind, size (or -), path inside the package, address to download it from.
@@ -120,7 +125,7 @@ export function manifest(c, origin) {
     created: new Date().toISOString(),
     site: origin,
     content: { version: c.content.version, savedAt: c.content.savedAt },
-    counts: { files: c.files.length, assets: c.assets.length, history: c.history.length },
+    counts: { files: c.files.length, assets: c.assets.length, history: c.history.length, stats_months: c.months.length },
     files: c.files.map((f) => ({ name: f.name, size: f.size, type: f.type, uploaded: f.uploaded, original: f.original })),
     assets: c.assets,
     history: c.history.map((h) => ({ file: `history/${historyName(h)}`, savedAt: h.savedAt, version: h.version })),
@@ -143,6 +148,9 @@ files/          Every picture and file uploaded in the admin (covers, photos, PD
 assets/         The built-in pictures and files the content uses (they also live in the
                 website's code on GitHub).
 history/        Earlier saved versions of content.json (what "Undo & history" shows).
+stats/          Visitor counts, one spreadsheet (.csv) per month, if visitor counting is
+                switched on. Times are in UTC. They are kept for reference: the restore
+                script doesn't put them back.
 manifest.json   A list of everything above, with dates and sizes.
 
 Not included: the admin password (only a secret fingerprint of it is ever stored) and

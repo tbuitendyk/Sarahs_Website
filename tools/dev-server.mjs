@@ -3,7 +3,9 @@
 //   ADMIN_PASSWORD=choose-a-test-password node tools/dev-server.mjs   (or: npm run dev)
 //   then open http://localhost:8788 and http://localhost:8788/admin
 //
-// Saved content and uploads are kept in .dev/kv.json (not part of the site).
+// Saved content and uploads are kept in .dev/kv.json, and visitor counts in .dev/stats.sqlite (not part of the site).
+// KV_FILE=memory keeps both in memory only (STATS_FILE=<file> picks the counts file). STATS=off runs without visitor counting, like a site whose
+// Cloudflare setup has no STATS database yet. Visitor counting needs Node 22.13 or newer (node:sqlite).
 
 import http from "node:http";
 import fs from "node:fs";
@@ -74,6 +76,39 @@ class LocalKV {
   }
 }
 
+// ---------------------------------------------------------------- a small stand-in for Cloudflare D1
+let DatabaseSync = null;
+try { ({ DatabaseSync } = await import("node:sqlite")); } catch { /* older Node: no visitor counting locally */ }
+
+class LocalD1 {
+  constructor(file) { this.db = new DatabaseSync(file); }
+  prepare(sql) { return new LocalStatement(this.db, sql, []); }
+  async batch(statements) {
+    this.db.exec("BEGIN");
+    try {
+      const out = statements.map((s) => s.execute());
+      this.db.exec("COMMIT");
+      return out;
+    } catch (err) {
+      this.db.exec("ROLLBACK");
+      throw err;
+    }
+  }
+}
+class LocalStatement {
+  constructor(db, sql, args) { this.db = db; this.sql = sql; this.args = args; }
+  bind(...args) { return new LocalStatement(this.db, this.sql, args); }
+  execute() {
+    const st = this.db.prepare(this.sql);
+    if (/^\s*(SELECT|WITH)\b/i.test(this.sql)) return { success: true, results: st.all(...this.args).map((r) => ({ ...r })), meta: {} };
+    const r = st.run(...this.args);
+    return { success: true, results: [], meta: { changes: Number(r.changes) } };
+  }
+  async run() { return this.execute(); }
+  async all() { return this.execute(); }
+  async first(col) { const row = this.execute().results[0] ?? null; return col ? row?.[col] ?? null : row; }
+}
+
 const TYPES = {
   ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8",
   ".json": "application/json", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp",
@@ -98,6 +133,10 @@ const env = {
   ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "",
   ASSETS: { fetch: async (req) => serveStatic(new URL(req.url).pathname) }, // like Cloudflare's env.ASSETS
 };
+if (DatabaseSync && process.env.STATS !== "off") {
+  if (STORE_FILE !== "memory") fs.mkdirSync(path.join(ROOT, ".dev"), { recursive: true });
+  env.STATS = new LocalD1(process.env.STATS_FILE || (STORE_FILE === "memory" ? ":memory:" : path.join(ROOT, ".dev", "stats.sqlite")));
+}
 
 http.createServer(async (req, res) => {
   try {
@@ -110,7 +149,7 @@ http.createServer(async (req, res) => {
       for await (const c of req) chunks.push(c);
       const body = chunks.length && !["GET", "HEAD"].includes(req.method) ? Buffer.concat(chunks) : undefined;
       const request = new Request(url, { method: req.method, headers: req.headers, body });
-      response = await onRequest({ request, env, next: () => serveStatic(url.pathname), waitUntil: () => {} });
+      response = await onRequest({ request, env, next: () => serveStatic(url.pathname), waitUntil: (p) => p.catch(() => {}) });
     }
     const headers = {};
     response.headers.forEach((v, k) => { if (k !== "set-cookie") headers[k] = v; });
@@ -126,4 +165,5 @@ http.createServer(async (req, res) => {
 }).listen(PORT, () => {
   console.log(`Site:  http://localhost:${PORT}`);
   console.log(`Admin: http://localhost:${PORT}/admin  ${env.ADMIN_PASSWORD ? "" : "(set ADMIN_PASSWORD to log in)"}`);
+  console.log(`Visitor counting: ${env.STATS ? "on" : "off"}`);
 });

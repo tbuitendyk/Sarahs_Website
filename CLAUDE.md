@@ -26,6 +26,7 @@ src/auth.js             Password check, signed session cookie, wrong-password li
 src/admin-pages.js      Login page and admin shell HTML, plus the admin's security headers
 src/defaults.js         Starting content, used only until the first save. Live content is in KV, NOT in this repo
 src/backup.js           What a backup holds (collect()), the read-only backup key, last-run status
+src/stats.js            Visitor counts in Cloudflare D1 (bound as STATS, optional): counting, the admin report, backup CSVs
 public/                 Static files (Pages output directory)
   assets/css, js, images, downloads   the website's design and built-in files
   assets/admin/         The admin editor (no libraries):
@@ -52,6 +53,12 @@ ADMIN_PASSWORD=pick-a-test-password node tools/dev-server.mjs
 ```
 
 Then open http://localhost:8788 and http://localhost:8788/admin. Use `KV_FILE=memory` for a throwaway store.
+- **Local visitor counts:** they use `node:sqlite` (Node 22.13+) as a stand-in for D1, in `.dev/stats.sqlite`.
+  - `STATS_FILE=<file>` picks another file.
+  - `STATS=off` runs without counting, like a site with no D1 binding.
+- **Playwright and counting:** headless Playwright says "HeadlessChrome", so it isn't counted. Set a normal
+  `userAgent` to test counting. Device emulation (e.g. `devices['iPhone 13']`) sends a real phone's user agent,
+  so it is counted.
 
 ## Content model
 
@@ -111,6 +118,24 @@ KV key `content` = `{ data, version, savedAt }`, where `data` has:
   - `list` records the start of a run and `done?items=&bytes=` records the finish, in `meta:last-auto-backup`. The admin warns after 3 days without one.
 - Restore (`tools/nas/sarahs-books-restore.sh`) logs in with the admin password. It does `PUT /api/admin/files/<name>` for each upload, then `PUT /api/admin/content`.
 - **Anything new that's stored in KV must be added to `collect()` in `src/backup.js`**, and restored by the restore script if it's needed to rebuild the site.
+
+## Visitor counts
+
+- **Where:** `src/stats.js`, with D1 bound as `STATS`. Without the binding nothing is counted, the admin's Visitors
+  section says it isn't switched on (SETUP.md step 9), and everything else works.
+- **Tables:** created on first use.
+  - `hits(hour UTC "YYYY-MM-DDTHH", kind, item, n)`. Kinds: `view` (page path), `visitor`, `country` (once per
+    visitor a day), `ref` (other website's host), `download` (file path) and `unlock` (correct subscriber password).
+  - `seen(day, id)` makes a person count once a day. `id` is an HMAC of IP + user agent with a daily key; it can't
+    be reversed or linked across days. Rows older than 2 days are deleted now and then.
+- **What's counted:** only GET 200 pages, plus downloads that aren't pictures (`/files/*` and `/assets/downloads/*`).
+  - Range requests that don't start at 0 aren't counted.
+  - Left out: bots (by user agent) and anyone with the admin cookie.
+  - Counting runs in `waitUntil`, and its errors are only logged.
+- **Admin report:** `GET /api/admin/stats?from=&to=&by=hour|day` (UTC hours). The admin turns local midnights into
+  UTC hours and groups the series into the viewer's own days or months.
+- **Free D1:** 100,000 rows written a day; a page view writes about 2 rows.
+- **No cookies,** so no cookie banner is needed.
 
 Rich-text fields are Markdown: `##` heading, `###` big line, `>` quote (verse style when its last line is a Bible reference such as "John 1:5"), lists, `**bold**`, `*italic*`, links.
 
@@ -178,5 +203,5 @@ This writes the site plus `admin-login.html` and `admin.html` (a practice admin 
 - The **newsletter signup** and **reader reviews** sections still say "Coming soon…".
 - **IGS #3 and #4** are placeholders based on "Four stories". In the starting content, IGS #2–#4 have
   `hide_buy` on; IGS #1 keeps its greyed-out Buy the book button.
-- **Visitor statistics in the admin: proposed, not built.** The plan is a free Cloudflare D1 database, because KV's
-  1,000 writes a day is too few for counting visits. The user hasn't decided yet.
+- **Visitor counting is built, but not switched on.** It needs the D1 database and `STATS` binding from SETUP.md step 9.
+  The user can do that at launch or any time later.

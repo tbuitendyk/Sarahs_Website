@@ -468,6 +468,244 @@ function historySection() {
   return wrap;
 }
 
+// ---------------------------------------------------------------- Visitors
+
+const SVG_NS = "http://www.w3.org/2000/svg";
+function svg(tag, attrs = {}, ...kids) {
+  const el = document.createElementNS(SVG_NS, tag);
+  for (const [k, v] of Object.entries(attrs)) if (v !== null && v !== undefined) el.setAttribute(k, String(v));
+  for (const kid of kids.flat()) if (kid !== null && kid !== undefined) el.append(kid.nodeType ? kid : String(kid));
+  return el;
+}
+const pad2 = (n) => String(n).padStart(2, "0");
+const utcHour = (d) => d.toISOString().slice(0, 13);
+const localDay = (d) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+const fmtNum = (n) => Number(n || 0).toLocaleString();
+const plural = (n, one, many) => `${fmtNum(n)} ${Number(n) === 1 ? one : many}`;
+
+// The period shown, as whole days (or months) in this computer's own time zone.
+function statsRange(period) {
+  const now = new Date();
+  const buckets = [];
+  if (period === "year") {
+    const start = new Date(now.getFullYear(), now.getMonth() - 11, 1);
+    for (let i = 0; i < 12; i++) {
+      const d = new Date(start.getFullYear(), start.getMonth() + i, 1);
+      buckets.push({ key: `${d.getFullYear()}-${pad2(d.getMonth() + 1)}`, date: d });
+    }
+    return { from: utcHour(start), to: utcHour(new Date(now.getFullYear(), now.getMonth() + 1, 1)), by: "day", unit: "month", buckets };
+  }
+  const days = Number(period);
+  const start = new Date(now.getFullYear(), now.getMonth(), now.getDate() - (days - 1));
+  for (let i = 0; i < days; i++) {
+    const d = new Date(start.getFullYear(), start.getMonth(), start.getDate() + i);
+    buckets.push({ key: localDay(d), date: d });
+  }
+  return { from: utcHour(start), to: utcHour(new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1)), by: "hour", unit: "day", buckets };
+}
+
+const FILE_KINDS = { pdf: "PDF", doc: "Word document", docx: "Word document", epub: "EPUB", txt: "Text" };
+function statsPageName(path) {
+  const d = state.data || {};
+  if (path === "/") return "Home page";
+  if (path === "/blog.html") return "Blog";
+  if (path === "/contact.html") return d.contact?.title || "Contact";
+  if (path === "/in-progress.html") return d.progress?.title || "In Progress";
+  let m = path.match(/^\/books\/([^/]+)\.html$/);
+  if (m) {
+    const b = (Array.isArray(d.books) ? d.books : []).find((x) => x && x.title && slugify(x.id || x.title) === m[1]);
+    return b ? `${b.title} (its own page)` : path;
+  }
+  m = path.match(/^\/([^/]+)\.html$/);
+  if (m) {
+    const p = (Array.isArray(d.pages) ? d.pages : []).find((x) => x && x.title && slugify(x.slug || x.title) === m[1]);
+    if (p) return p.title;
+  }
+  return path;
+}
+function statsFileName(path) {
+  const ext = (path.split(".").pop() || "").toLowerCase();
+  const kind = FILE_KINDS[ext] || ext.toUpperCase();
+  for (const b of Array.isArray(state.data?.books) ? state.data.books : []) {
+    if (!b || !b.title) continue;
+    const f = (Array.isArray(b.downloads) ? b.downloads : []).find((x) => x && x.file === path);
+    if (f || b.download === path) return `${b.title} (${(f && f.label) || kind})`;
+  }
+  try { return decodeURIComponent(path.split("/").pop()); } catch { return path; }
+}
+let regionNames = null;
+function countryName(code) {
+  try {
+    regionNames ||= new Intl.DisplayNames(["en"], { type: "region" });
+    return regionNames.of(code) || code;
+  } catch { return code; }
+}
+
+function niceStep(max) {
+  if (max <= 4) return 1;
+  const raw = max / 4;
+  const p = 10 ** Math.floor(Math.log10(raw));
+  return [1, 2, 5, 10].map((m) => m * p).find((s) => s >= raw);
+}
+
+// Visitors per day (or month) as columns, with a pop-up for each one and the same numbers as a table.
+function visitorsChart(buckets, unit) {
+  const box = h("div", { class: "chart" });
+  const tip = h("div", { class: "chart-tip", "aria-hidden": "true" });
+  const short = (b) => (unit === "month"
+    ? b.date.toLocaleDateString("en", { month: "short" })
+    : buckets.length <= 7 ? b.date.toLocaleDateString("en", { weekday: "short" }) : b.date.toLocaleDateString("en", { month: "short", day: "numeric" }));
+  const long = (b) => (unit === "month"
+    ? b.date.toLocaleDateString("en", { month: "long", year: "numeric" })
+    : b.date.toLocaleDateString("en", { weekday: "short", month: "short", day: "numeric" }));
+  const tipText = (b) => `${long(b)}: ${plural(b.visitor, "visitor", "visitors")} · ${plural(b.view, "page view", "page views")} · ${plural(b.download, "download", "downloads")}`;
+  let lastWidth = 0;
+  function draw() {
+    const W = Math.max(280, Math.floor(box.clientWidth));
+    if (W === lastWidth) return;
+    lastWidth = W;
+    const H = 220, left = 40, right = 8, top = 14, bottom = 28;
+    const pw = W - left - right, ph = H - top - bottom;
+    const max = Math.max(0, ...buckets.map((b) => b.visitor));
+    const step = niceStep(max);
+    const yMax = Math.max(step, step * Math.ceil(max / step));
+    const y = (v) => top + ph - (v / yMax) * ph;
+    const slot = pw / buckets.length;
+    const bw = Math.max(2, Math.min(24, slot - 2));
+    const total = buckets.reduce((s, b) => s + b.visitor, 0);
+    const chart = svg("svg", { width: W, height: H, viewBox: `0 0 ${W} ${H}`, role: "img",
+      "aria-label": `Visitors per ${unit}: ${fmtNum(total)} in all. The table below has every number.` });
+    for (let v = step; v <= yMax; v += step) {
+      chart.append(svg("line", { x1: left, x2: W - right, y1: y(v), y2: y(v), class: "grid" }));
+      chart.append(svg("text", { x: left - 8, y: y(v) + 4, class: "tick", "text-anchor": "end" }, fmtNum(v)));
+    }
+    chart.append(svg("text", { x: left - 8, y: y(0) + 4, class: "tick", "text-anchor": "end" }, "0"));
+    const every = Math.max(1, Math.ceil(52 / slot)); // room for each date label
+    const bars = [];
+    buckets.forEach((b, i) => {
+      const cx = left + slot * i + slot / 2;
+      let bar = null;
+      if (b.visitor > 0) {
+        const x0 = cx - bw / 2, y0 = y(b.visitor), base = y(0), r = Math.min(4, base - y0, bw / 2);
+        bar = svg("path", { class: "bar", d: `M${x0},${base}V${y0 + r}Q${x0},${y0} ${x0 + r},${y0}H${x0 + bw - r}Q${x0 + bw},${y0} ${x0 + bw},${y0 + r}V${base}Z` });
+        chart.append(bar);
+      }
+      bars.push(bar);
+      if ((buckets.length - 1 - i) % every === 0) {
+        // Keep the first and last labels inside the chart instead of cut off at its edges.
+        const text = short(b), half = text.length * 3.4;
+        const anchor = cx + half > W - 2 ? "end" : cx - half < 2 ? "start" : "middle";
+        const x = anchor === "end" ? W - 2 : anchor === "start" ? 2 : cx;
+        chart.append(svg("text", { x, y: H - 8, class: "tick", "text-anchor": anchor }, text));
+      }
+    });
+    chart.append(svg("line", { x1: left, x2: W - right, y1: y(0), y2: y(0), class: "axis" }));
+    // Hover and keyboard targets: the whole column, bigger than the bar.
+    buckets.forEach((b, i) => {
+      const cx = left + slot * i + slot / 2;
+      const hit = svg("rect", { x: left + slot * i, y: top, width: slot, height: ph, class: "hit" });
+      const show = () => {
+        bars.forEach((x) => x?.classList.remove("on"));
+        bars[i]?.classList.add("on");
+        tip.textContent = tipText(b);
+        tip.classList.add("show");
+        const half = tip.offsetWidth / 2;
+        tip.style.left = `${Math.min(W - half, Math.max(half, cx))}px`;
+        tip.style.top = `${Math.max(top, y(b.visitor)) - 8}px`;
+      };
+      const hide = () => { bars[i]?.classList.remove("on"); tip.classList.remove("show"); };
+      hit.addEventListener("mouseenter", show);
+      hit.addEventListener("mouseleave", hide);
+      hit.addEventListener("click", show);
+      chart.append(hit);
+    });
+    box.replaceChildren(chart, tip);
+  }
+  new ResizeObserver(() => draw()).observe(box);
+
+  const table = h("table", { class: "top-table chart-table" },
+    h("thead", {}, h("tr", {}, h("th", {}, unit === "month" ? "Month" : "Day"), h("th", { class: "num" }, "Visitors"),
+      h("th", { class: "num" }, "Page views"), h("th", { class: "num" }, "Downloads"), h("th", { class: "num" }, "Subscriber password"))),
+    h("tbody", {}, [...buckets].reverse().map((b) => h("tr", {}, h("td", {}, long(b)), h("td", { class: "num" }, fmtNum(b.visitor)),
+      h("td", { class: "num" }, fmtNum(b.view)), h("td", { class: "num" }, fmtNum(b.download)), h("td", { class: "num" }, fmtNum(b.unlock))))));
+  return [box, h("details", { class: "chart-details" }, h("summary", {}, "Show the numbers as a table"), table)];
+}
+
+function topList(title, rows, nameOf, empty, note) {
+  const card = h("div", { class: "stats-card" }, h("h3", {}, title));
+  if (!rows.length) card.append(h("p", { class: "help" }, empty));
+  else {
+    card.append(h("table", { class: "top-table" }, h("tbody", {},
+      rows.slice(0, 10).map((r) => h("tr", {}, h("td", {}, nameOf(r.item)), h("td", { class: "num" }, fmtNum(r.n)))))));
+    if (rows.length > 10) card.append(h("p", { class: "help" }, `and ${rows.length - 10} more`));
+  }
+  if (note) card.append(h("p", { class: "help" }, note));
+  return card;
+}
+
+function visitorsSection() {
+  let period = "30";
+  let token = 0;
+  const body = h("div", {}, h("p", {}, "Loading…"));
+  const bar = h("div", { class: "period", role: "group", "aria-label": "Period shown" });
+  for (const [value, label] of [["7", "Last 7 days"], ["30", "Last 30 days"], ["year", "Last 12 months"]]) {
+    const b = h("button", { type: "button", class: "btn btn-small", "aria-pressed": String(value === period), onclick: () => {
+      period = value;
+      for (const x of bar.children) x.setAttribute("aria-pressed", String(x === b));
+      load();
+    } }, label);
+    bar.append(b);
+  }
+
+  async function load() {
+    const mine = ++token;
+    const r = statsRange(period);
+    let res;
+    try { res = await api.stats(r.from, r.to, r.by); } catch (err) {
+      if (mine === token) body.replaceChildren(h("p", { class: "error" }, err.message));
+      return;
+    }
+    if (mine !== token) return;
+    if (!res.enabled) {
+      bar.hidden = true;
+      body.replaceChildren(
+        h("p", { class: "backup-state warn" }, "Visitor counting isn’t switched on yet."),
+        h("p", {}, "It needs a free database in Cloudflare, set up once (step 9 in SETUP.md). The website works normally without it, and counting starts on the day it’s switched on."));
+      return;
+    }
+    const byKey = new Map(r.buckets.map((b) => [b.key, Object.assign(b, { visitor: 0, view: 0, download: 0, unlock: 0 })]));
+    for (const row of res.series || []) {
+      const key = r.unit === "month" ? String(row.t).slice(0, 7) : localDay(new Date(`${row.t}:00:00Z`));
+      const b = byKey.get(key);
+      if (b && row.kind in b) b[row.kind] += Number(row.n) || 0;
+    }
+    const sum = (k) => r.buckets.reduce((s, b) => s + b[k], 0);
+    const top = (kind) => (res.top || []).filter((t) => t.kind === kind);
+    const tile = (label, value) => h("div", { class: "tile" }, h("p", { class: "tile-label" }, label), h("p", { class: "tile-value" }, fmtNum(value)));
+    const since = res.since ? new Date(`${res.since}:00:00Z`).toLocaleDateString("en", { month: "long", day: "numeric", year: "numeric" }) : null;
+    body.replaceChildren(
+      ...(res.practice ? [h("p", { class: "backup-state warn" }, "Practice numbers, made up for the preview. The real admin shows real visits.")] : []),
+      h("div", { class: "tiles" },
+        tile("Visitors", sum("visitor")), tile("Page views", sum("view")), tile("Downloads", sum("download")), tile("Subscriber password entered", sum("unlock"))),
+      h("div", { class: "stats-card" }, h("h2", {}, r.unit === "month" ? "Visitors per month" : "Visitors per day"), ...visitorsChart(r.buckets, r.unit)),
+      h("div", { class: "stats-grid" },
+        topList("Most-read pages", top("view"), statsPageName, "No pages read in this period."),
+        topList("Downloads", top("download"), statsFileName, "No downloads in this period."),
+        topList("Where visitors came from", top("ref"), (x) => x, "No visits from links on other websites in this period.",
+          "Only visits from a link on another website. People who typed the address, used a bookmark, or clicked a link in an e-mail or app aren’t listed."),
+        topList("Countries", top("country"), countryName, "No visitors in this period.")),
+      h("p", { class: "help" }, [
+        since && !res.practice ? `Counting since ${since}. ` : "",
+        "A person counts as one visitor a day, however many pages they read. Your own visits while you’re logged in here aren’t counted. ",
+        "Search-engine robots are left out, but a few disguised ones may still be counted, so take the numbers as a good guide rather than exact. ",
+        "Days are in this computer’s time zone. Newsletter sign-ups are counted in Kit.",
+      ].join("")),
+    );
+  }
+  load();
+  return h("div", { class: "visitors" }, bar, body);
+}
+
 function sizeText(bytes) {
   const n = Number(bytes) || 0;
   return n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
@@ -618,6 +856,7 @@ function renderMain(main) {
   } else if (sec.kind === "files") parts.push(filesSection());
   else if (sec.kind === "history") parts.push(historySection());
   else if (sec.kind === "backups") parts.push(backupsSection());
+  else if (sec.kind === "visitors") parts.push(visitorsSection());
   else if (sec.kind === "account") parts.push(accountSection());
   main.replaceChildren(...parts);
   main.scrollTop = 0;
