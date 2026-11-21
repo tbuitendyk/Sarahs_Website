@@ -184,7 +184,7 @@ export default {
       "intro": "",
       "photo": "",
       "photo_description": "",
-      "body": "This page is for email subscribers.",
+      "body": "",
       "book_list": "none",
       "book_list_heading": "",
       "centered": true,

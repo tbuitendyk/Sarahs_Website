@@ -733,3 +733,6 @@ a:hover > .cover-placeholder { transform: translateY(-3px); }
 /* Several download files (PDF, Word, EPUB) for one story */
 .downloads { display: grid; gap: 0.75rem; }
 .downloads + p { margin-top: 1rem; }
+
+/* A hidden section (e.g. the password box before someone signs up) shouldn't leave a divider line */
+.section[hidden] + .section { border-top: 0; }

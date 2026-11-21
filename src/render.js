@@ -616,10 +616,7 @@ ${indent(feed, 4)}
       }
       parts.push(`\n<section class="section">\n  <div class="wrap">\n${indent(inner, 4)}\n  </div>\n</section>`);
     }
-    if (truthy(pg.signup)) {
-      const signup = this.signupBox();
-      if (signup) parts.push(`\n<section class="section section-signup">\n  <div class="wrap">\n${indent(signup, 4)}\n  </div>\n</section>`);
-    }
+    // "Already a subscriber?" password box comes before the sign-up form.
     if (truthy(pg.unlock_box)) {
       const box = this.unlockBox(opts.pathname, opts);
       // The password box is only for people who signed up (Kit remembers that on their device), so it
@@ -628,6 +625,10 @@ ${indent(feed, 4)}
       const startHidden = box && !opts.subscriber && !opts.error;
       if (startHidden) this.usedSubscriberBox = true;
       if (box) parts.push(`\n<section class="section section-unlock"${startHidden ? " data-subscriber-box hidden" : ""}>\n  <div class="wrap">\n${indent(box, 4)}\n  </div>\n</section>`);
+    }
+    if (truthy(pg.signup)) {
+      const signup = this.signupBox();
+      if (signup) parts.push(`\n<section class="section section-signup">\n  <div class="wrap">\n${indent(signup, 4)}\n  </div>\n</section>`);
     }
     if (key) {
       const heading = text(pg.book_list_heading);
