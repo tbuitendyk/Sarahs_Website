@@ -36,6 +36,7 @@ export default {
     },
     "recent_release": {
       "section_title": "Recent Release",
+      "book": "light-through-his-love",
       "label": "Anthology · Books for Bibles Press",
       "title": "Light Through His Love",
       "cover": "/assets/images/covers/light-through-his-love.jpg",

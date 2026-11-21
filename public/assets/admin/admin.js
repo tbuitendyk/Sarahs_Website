@@ -189,7 +189,14 @@ function renderField(obj, f, onAnyChange) {
     case "group": {
       if (!obj[f.key] || typeof obj[f.key] !== "object") obj[f.key] = {};
       const fs = h("fieldset", { class: "group" }, h("legend", {}, f.label));
-      for (const sub of f.fields) fs.append(renderField(obj[f.key], sub));
+      const shown = [];
+      const refresh = () => { for (const [sub, el] of shown) el.hidden = !sub.showIf(obj[f.key]); };
+      for (const sub of f.fields) {
+        const el = renderField(obj[f.key], sub, refresh);
+        if (sub.showIf) shown.push([sub, el]);
+        fs.append(el);
+      }
+      refresh();
       return fs;
     }
     case "list": {

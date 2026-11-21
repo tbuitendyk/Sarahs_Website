@@ -20,6 +20,14 @@ export function listChoices(data) {
   return [...LIST_CHOICES, ...own];
 }
 
+// For Recent Release: every book (by its web address name), plus "no book".
+export function bookChoices(data) {
+  const books = (Array.isArray(data?.books) ? data.books : []).filter((b) => b && typeof b === "object" && b.title);
+  return [{ value: "", label: "No book: fill in the boxes below by hand" },
+    ...books.map((b) => ({ value: slugify(b.id || b.title), label: b.hidden === true ? `${b.title} (hidden)` : b.title }))];
+}
+const byHand = (rr) => !rr.book;
+
 const RICH_HELP = "“Heading” makes a section heading and “Big line” a large line of text. “Quote” makes a boxed note, or a Bible verse when its last line is the reference (like John 1:5).";
 
 export const BOOK_FIELDS = [
@@ -125,14 +133,23 @@ export const SECTIONS = [
       ] },
       { key: "recent_release", label: "Recent release", type: "group", fields: [
         { key: "section_title", label: "Section heading", type: "string" },
-        { key: "label", label: "Small gold label", type: "string" },
-        { key: "title", label: "Book title", type: "string" },
-        { key: "cover", label: "Cover picture", type: "image" },
+        {
+          key: "book", label: "Which book", type: "select", choices: bookChoices,
+          help: "The book’s title, small gold label, cover, and Learn more and Buy the book (or Download) buttons come from Books, so they stay up to date by themselves. The heading, verse and text below are this section’s own words.",
+          // Give the book a lasting web address name, so renaming its title later doesn't unlink it.
+          onSet: (rr, value, data) => {
+            const b = (data?.books || []).find((x) => x && !x.id && slugify(x.title) === value);
+            if (b) b.id = value;
+          },
+        },
+        { key: "label", label: "Small gold label", type: "string", showIf: byHand },
+        { key: "title", label: "Book title", type: "string", showIf: byHand },
+        { key: "cover", label: "Cover picture", type: "image", showIf: byHand },
         { key: "quote", label: "Verse or quote", type: "text" },
         { key: "quote_source", label: "Where the verse is from", type: "string" },
         { key: "text", label: "Text", type: "rich" },
-        { key: "learn_more", label: "Learn more link", type: "url", help: "e.g. books/light-through-his-love.html" },
-        { key: "buy", label: "Buy link", type: "url" },
+        { key: "learn_more", label: "Learn more link", type: "url", help: "e.g. books/light-through-his-love.html", showIf: byHand },
+        { key: "buy", label: "Buy link", type: "url", showIf: byHand },
       ] },
       { key: "about", label: "About me", type: "group", fields: [
         { key: "section_title", label: "Section heading", type: "string" },

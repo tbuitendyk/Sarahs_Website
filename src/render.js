@@ -245,6 +245,31 @@ ${this.footer(p)}</body>
 `;
   }
 
+  // The home page's Recent Release section. title/label/cover/buttons come from a book or from rr itself.
+  recentSection(rr, cover, label, title, buttons) {
+    let quote = "";
+    if (text(rr.quote)) {
+      const cite = text(rr.quote_source) ? `\n          <cite>${esc(rr.quote_source)}</cite>` : "";
+      quote = `        <blockquote class="verse">\n          <p>${inline(rr.quote, "{P}")}</p>${cite}\n        </blockquote>\n`;
+    }
+    const btns = buttons.length ? '        <div class="btn-row">\n' + buttons.join("\n") + "\n        </div>\n" : "";
+    const eyebrow = label ? `        <p class="eyebrow">${esc(label)}</p>\n` : "";
+    return `
+<section class="section">
+  <div class="wrap">
+    <h2 class="section-title">${esc(text(rr.section_title) || "Recent Release")}</h2>
+    <div class="feature">
+${cover}
+      <div>
+${eyebrow}        <h3 class="feature-title">${esc(title)}</h3>
+${quote}        ${markdown(rr.text, "{P}")}
+${btns}      </div>
+    </div>
+  </div>
+</section>
+`;
+  }
+
   // -- shared pieces -----------------------------------------------------------
   bookHref(bk) { return bk.has_page ? `{P}books/${bk.id}.html` : "#"; }
 
@@ -425,8 +450,18 @@ ${this.footer(p)}</body>
     const ab = obj(h.about);
     const hero = obj(h.hero);
 
+    // Recent Release can follow a book (rr.book = its id): the title, label, cover and buttons then come
+    // from the book, and only the heading, verse and text are the Recent Release's own words.
+    const pick = text(rr.book) ? this.books.find((b) => b.id === slugify(text(rr.book)) && !b.hidden) || null : null;
     let recent = "";
-    if (text(rr.title)) {
+    if (pick) {
+      const learn = this.bookHref(pick);
+      const media = learn !== "#" ? `a class="feature-media" href="${learn}"` : 'div class="feature-media"';
+      const cover = `      <${media}>\n${indent(this.cover(pick), 8)}\n      </${media.split(" ")[0]}>`;
+      const second = this.secondButton(pick);
+      const buttons = [`          <a class="btn btn-outline" href="${learn}">Learn more</a>`, ...(second ? [`          ${second}`] : [])];
+      recent = this.recentSection(rr, cover, text(pick.label), pick.title, buttons);
+    } else if (text(rr.title)) {
       let cover = "";
       if (text(rr.cover)) {
         const img = `<img class="cover" src="${esc(assetUrl(rr.cover, "{P}"))}" alt="Cover of ${esc(rr.title)}" width="663" height="1024">`;
@@ -435,30 +470,10 @@ ${this.footer(p)}</body>
           ? `      <a class="feature-media" href="${esc(learn)}">\n        ${img}\n      </a>`
           : `      <div class="feature-media">\n        ${img}\n      </div>`;
       }
-      let quote = "";
-      if (text(rr.quote)) {
-        const cite = text(rr.quote_source) ? `\n          <cite>${esc(rr.quote_source)}</cite>` : "";
-        quote = `        <blockquote class="verse">\n          <p>${inline(rr.quote, "{P}")}</p>${cite}\n        </blockquote>\n`;
-      }
       const buttons = [];
       if (text(rr.learn_more)) buttons.push(`          <a class="btn btn-outline" href="${esc(linkUrl(rr.learn_more, "{P}"))}">Learn more</a>`);
       if (text(rr.buy)) buttons.push(`          <a class="btn" href="${esc(linkUrl(rr.buy, "{P}"))}">Buy the book</a>`);
-      const btns = buttons.length ? '        <div class="btn-row">\n' + buttons.join("\n") + "\n        </div>\n" : "";
-      const eyebrow = text(rr.label) ? `        <p class="eyebrow">${esc(rr.label)}</p>\n` : "";
-      recent = `
-<section class="section">
-  <div class="wrap">
-    <h2 class="section-title">${esc(text(rr.section_title) || "Recent Release")}</h2>
-    <div class="feature">
-${cover}
-      <div>
-${eyebrow}        <h3 class="feature-title">${esc(rr.title)}</h3>
-${quote}        ${markdown(rr.text, "{P}")}
-${btns}      </div>
-    </div>
-  </div>
-</section>
-`;
+      recent = this.recentSection(rr, cover, text(rr.label), text(rr.title), buttons);
     }
 
     let about = "";

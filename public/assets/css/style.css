@@ -394,7 +394,7 @@ blockquote.verse cite {
   .cover-placeholder .ph-author, .cover-placeholder .ph-note { font-size: 0.58rem; letter-spacing: 0.12em; }
 }
 .book-card { display: flex; flex-direction: column; }
-.book-card .cover-link { display: block; text-decoration: none; }
+.book-card .cover-link, a.feature-media { display: block; text-decoration: none; }
 .book-card h3 { font-size: 1.4rem; margin: 1rem 0 0.2rem; }
 .book-card h3 a { color: var(--ink); text-decoration: none; }
 .book-card h3 a:hover { color: var(--gold-deep); }

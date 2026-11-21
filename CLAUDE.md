@@ -62,6 +62,11 @@ KV key `content` = `{ data, version, savedAt }`, where `data` has:
   - the Kit form: `kit_form_id`, `kit_uid`, heading, text, picture, placeholder, button, small_print, success_message, subscribed_message
   - `subscriber_password`, `remember_days` (default 30), `locked_message`, `subscriber_page` (slug the "Already a subscriber?" box opens) and `unlock_prompt` for the subscriber lock
 - `home`: hero, recent release, about, reviews, newsletter
+  - `home.recent_release.book` (a book's id) makes Recent Release follow that book. Title, label, cover and buttons
+    (the same Learn more and second button as its card) come from the book. `section_title`, `quote`, `quote_source`
+    and `text` stay its own words.
+  - With no book, or a missing or hidden one, the hand-filled `label`/`title`/`cover`/`learn_more`/`buy` are used.
+  - The admin shows those boxes only when no book is chosen (`showIf` on group fields).
 - `contact`
 - `progress`: title, eyebrow and `items` (each with `show_bar` and `percent` 0–100)
 - `blog`: posts with title, date (yyyy-mm-dd) and body
