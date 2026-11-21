@@ -2,3 +2,8 @@
 .dev/
 _preview/
 node_modules/
+
+# NAS settings file holds the backup key: never commit it
+tools/nas/sarahs-books-backup.conf
+*.conf
+!*.conf.example

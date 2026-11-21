@@ -19,12 +19,13 @@ Cloudflare Pages, free plan. There's no build step.
 
 ```
 functions/[[path]].js   Runs every request except /assets/* (see public/_routes.json): website pages,
-                        /files/*, /admin, /admin/login|logout and /api/admin/*
+                        /files/*, /admin, /admin/login|logout, /api/admin/* and /api/backup/*
 src/render.js           Builds each page from the content (the design's HTML). Pages are rendered per visit
 src/store.js            Cloudflare KV (bound as SITE): content, 180-day backups, uploads
 src/auth.js             Password check, signed session cookie, wrong-password limit, password change
 src/admin-pages.js      Login page and admin shell HTML, plus the admin's security headers
 src/defaults.js         Starting content, used only until the first save. Live content is in KV, NOT in this repo
+src/backup.js           What a backup holds (collect()), the read-only backup key, last-run status
 public/                 Static files (Pages output directory)
   assets/css, js, images, downloads   the website's design and built-in files
   assets/admin/         The admin editor (no libraries):
@@ -33,11 +34,15 @@ public/                 Static files (Pages output directory)
     editor.js           word-processor text box; converts its HTML to Markdown
     markdown.js         Markdown -> HTML; shared by render.js and the editor
     api.js              calls /api/admin/*; demo mode for previews (window.SB_DEMO)
+    tar.js              builds the .tar.gz for "Download a backup now"
   _routes.json          /assets/css|js|images|admin are served directly; everything else (incl. downloads) goes to the function
 tools/dev-server.mjs    Local copy of Cloudflare (Node 18+), with KV kept in .dev/kv.json
 tools/export-static.mjs Saves a static copy of the site plus a practice admin, for previews
                         (Kit replaced by tools/preview/kit-practice.js; locked pages get *.unlocked.html copies)
-SETUP.md                One-time Cloudflare setup, written for non-developers
+tools/nas/               NAS scripts (POSIX sh; tested with BusyBox and dash): backup, restore, qnap-install
+                        (schedule via /etc/config/crontab), nas-check (prints the NAS's system and tools)
+SETUP.md                Launch checklist: Cloudflare, sarah.buitendyk.ca DNS, going back. For non-developers
+BACKUP.md               NAS backup setup, restore and troubleshooting. For non-developers
 ```
 
 Run locally:
@@ -85,6 +90,19 @@ KV key `content` = `{ data, version, savedAt }`, where `data` has:
 - With no subscriber password set, locked pages say "This page isn't open yet."
 - Pages with `unlock_box` show an "Already a subscriber?" password box. It posts `next` (the subscriber page) and `back` (this page), so a wrong password shows the error where it was typed. Once unlocked, the box becomes an "Open the subscriber stories" button. Otherwise the box section starts `hidden`, and `public/assets/js/subscriber-box.js` shows it only on devices where Kit recorded a sign-up (localStorage `cksubscribed-*`, or Kit's `ckjs:submission:complete` event right after signing up). It is also shown after a wrong try (`?wrong=1`). These pages vary per visitor, so they are `private, no-store`. The public Short Stories page has it.
 
+## Backups
+
+- The NAS pulls a backup nightly, over HTTPS. Cloudflare has no rsync/SSH, and the site never connects to the NAS.
+- `GET /api/backup/list` gives tab-separated `kind, size|-, path, url` after the header `# sarahs-books backup list 1`.
+  - Items: `README.txt`, `manifest.json`, `content.json`, `files/<name>` (uploads),
+    `assets/...` (the built-in files the content references, via `env.ASSETS`) and `history/*.json` (`backup:*` keys).
+  - The script saves them as one `sarahs-books-YYYY-MM-DD_HHMMSS.tar.gz`. The admin's "Download a backup now" builds the same file in the browser.
+- Access is the backup key (`Authorization: Bearer sbk_…`, read-only) or an admin login.
+  - Only the key's SHA-256 is stored, in `auth:backup_key`.
+  - `list` records the start of a run and `done?items=&bytes=` records the finish, in `meta:last-auto-backup`. The admin warns after 3 days without one.
+- Restore (`tools/nas/sarahs-books-restore.sh`) logs in with the admin password. It does `PUT /api/admin/files/<name>` for each upload, then `PUT /api/admin/content`.
+- **Anything new that's stored in KV must be added to `collect()` in `src/backup.js`**, and restored by the restore script if it's needed to rebuild the site.
+
 Rich-text fields are Markdown: `##` heading, `###` big line, `>` quote (verse style when its last line is a Bible reference such as "John 1:5"), lists, `**bold**`, `*italic*`, links.
 
 Addresses:
@@ -125,7 +143,26 @@ This writes the site plus `admin-login.html` and `admin.html` (a practice admin 
 
 ## Open items
 
-- **One-time setup isn't done yet** (see `SETUP.md`). The site isn't live, and the WordPress site is still public.
+- **Launch (hosting, DNS, address) isn't done yet.** The user will say when. Until then, do no publishing,
+  Cloudflare or DNS actions. Everything is written down in `SETUP.md` (launch) and `BACKUP.md` (NAS).
+  - **Decided:**
+    - **Hosting:** Cloudflare Pages free plan, project `sarahsbooks`. The production branch is this repo's
+      branch (`claude/sarahs-website-nbke6r`); once live, every push to it goes live.
+      - At launch, consider making `main` the production branch, so Claude's pushes become preview deployments
+        and going live means merging. That's the user's call.
+    - **Address:** `sarah.buitendyk.ca`. A CNAME to `sarahsbooks.pages.dev` is added by the user on their own BIND
+      servers (`ns1`–`ns3.buitendyk.ca`). Never touch the other records, especially MX.
+      - Self-hosting on the user's Linux server was considered and not chosen.
+  - **Before any launch step:** tag the current commit `before-launch` (the user's restore point). The WordPress
+    site stays untouched until the new site is checked.
+  - **This repository is public.** SETUP.md step 0 recommends making it private, because the code holds the hidden
+    page's address and `public/assets/downloads/words-of-love.docx`. Keep private details (IP addresses, machine
+    names, NAS model or firmware, keys) out of this repo.
+  - **NAS backups:** written and tested, not yet installed.
+    - The NAS is a QNAP. Its shell is BusyBox, there's no `stty` and no python, its curl lives in `/sbin`,
+      and `/tmp` is small.
+    - Folder `/share/CACHEDEV3_DATA/scb-site-backup`. The user's start-up script is
+      `/share/ICLDRVol2/datadr/startup.sh`; it should call `qnap-install.sh` (see BACKUP.md step 6).
 - **Words of Love has no cover.** The image was missing on WordPress too.
 - **The subscriber password isn't set yet.** Until Sarah sets it under Newsletter, subscriber pages say "This page isn't open yet". It goes in Kit's confirmation or welcome email.
 - **The contact form became an email link.** Sarah's original sentence ends "…send a message with the form below."; that part is left off because there's no form.

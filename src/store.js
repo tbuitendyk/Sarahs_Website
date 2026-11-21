@@ -63,6 +63,23 @@ export async function listBackups(env, limit = 60) {
   return res.keys.map((k) => ({ key: k.name, savedAt: k.metadata?.savedAt || null, version: k.metadata?.version ?? null }));
 }
 
+// Every earlier version (for full backups), oldest first.
+export async function listAllBackups(env) {
+  const out = [];
+  let cursor;
+  do {
+    const res = await env.SITE.list({ prefix: "backup:", cursor, limit: 1000 });
+    for (const k of res.keys) out.push({ key: k.name, savedAt: k.metadata?.savedAt || null, version: k.metadata?.version ?? null });
+    cursor = res.list_complete ? null : res.cursor;
+  } while (cursor);
+  return out.reverse();
+}
+
+export async function getBackup(env, key) {
+  if (!/^backup:\d{13}$/.test(String(key))) return null;
+  return env.SITE.get(key, { type: "json" });
+}
+
 export async function restoreBackup(env, key) {
   if (!/^backup:\d{13}$/.test(String(key))) return { error: "That backup doesn't exist." };
   const old = await env.SITE.get(key, { type: "json" });
@@ -95,6 +112,17 @@ export async function putFile(env, filename, bytes) {
   const rand = [...crypto.getRandomValues(new Uint8Array(3))].map((b) => b.toString(16).padStart(2, "0")).join("");
   const name = `${base}-${rand}.${m[2] === "jpeg" ? "jpg" : m[2]}`;
   const meta = { type: TYPES[m[2]], size: bytes.byteLength, uploaded: new Date().toISOString(), original: String(filename).slice(0, 120) };
+  await env.SITE.put(`file:${name}`, bytes, { metadata: meta });
+  return { ok: true, name, url: `/files/${name}`, ...meta };
+}
+
+// Put an upload back under its original name (used when restoring a backup).
+export async function putFileNamed(env, name, bytes) {
+  const m = String(name || "").match(/^[a-z0-9-]+\.([a-z0-9]+)$/);
+  if (!m || !TYPES[m[1]]) return { error: "That file name can't be restored." };
+  if (!bytes || bytes.byteLength === 0) return { error: "The file is empty." };
+  if (bytes.byteLength > MAX_UPLOAD_BYTES) return { error: "The file is too big (10 MB at most)." };
+  const meta = { type: TYPES[m[1]], size: bytes.byteLength, uploaded: new Date().toISOString(), original: name };
   await env.SITE.put(`file:${name}`, bytes, { metadata: meta });
   return { ok: true, name, url: `/files/${name}`, ...meta };
 }

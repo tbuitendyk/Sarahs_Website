@@ -93,7 +93,11 @@ const routes = JSON.parse(fs.readFileSync(path.join(PUBLIC, "_routes.json"), "ut
 const excluded = (p) => routes.exclude.some((r) => (r.endsWith("/*") ? p.startsWith(r.slice(0, -1)) : p === r));
 
 const { onRequest } = await import(pathToFileURL(path.join(ROOT, "functions", "[[path]].js")).href);
-const env = { SITE: new LocalKV(STORE_FILE === "memory" ? null : STORE_FILE), ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "" };
+const env = {
+  SITE: new LocalKV(STORE_FILE === "memory" ? null : STORE_FILE),
+  ADMIN_PASSWORD: process.env.ADMIN_PASSWORD || "",
+  ASSETS: { fetch: async (req) => serveStatic(new URL(req.url).pathname) }, // like Cloudflare's env.ASSETS
+};
 
 http.createServer(async (req, res) => {
   try {

@@ -1,0 +1,26 @@
+# Settings for sarahs-books-backup.sh (and qnap-install.sh)
+# Copy this file to sarahs-books-backup.conf (same folder as the scripts) and fill it in.
+# Keep it private, because it holds the backup key:   chmod 600 sarahs-books-backup.conf
+
+# The website's address
+SITE="https://sarah.buitendyk.ca"
+
+# From the website's admin: Backups -> "Create a backup key" (shown only once)
+BACKUP_KEY="PASTE-THE-BACKUP-KEY-HERE"
+
+# Folder on the NAS where the backup files are saved
+BACKUP_DIR="/share/CACHEDEV3_DATA/scb-site-backup/backups"
+
+# How many backups to keep (one per run; 60 = about two months of nightly backups)
+KEEP=60
+
+# What each run did, and any errors (the last 1,000 lines are kept)
+LOG_FILE="/share/CACHEDEV3_DATA/scb-site-backup/backup.log"
+
+# When to run (cron format: minute hour day month weekday). "17 3 * * *" = every night at 3:17.
+# Used by qnap-install.sh; run it again after changing this.
+SCHEDULE="17 3 * * *"
+
+# Optional: also e-mail this address when a backup fails (uses the NAS's own mail settings).
+# A failure always goes into the NAS's System Logs too.
+ALERT_EMAIL=""

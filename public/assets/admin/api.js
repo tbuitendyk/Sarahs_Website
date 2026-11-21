@@ -24,6 +24,17 @@ async function call(method, path, body, isRaw) {
   return data;
 }
 
+// Plain download from the site while logged in (used for backups).
+async function raw(url) {
+  let res;
+  try { res = await fetch(url, { credentials: "same-origin" }); } catch {
+    throw new Error("Couldn’t reach the website. Check the internet connection and try again.");
+  }
+  if (res.status === 401) { window.location.href = "/admin"; throw new Error("Please log in again."); }
+  if (!res.ok) throw new Error(`Couldn’t download ${url} (${res.status}).`);
+  return res;
+}
+
 const realApi = {
   demo: false,
   loadContent: () => call("GET", "content"),
@@ -34,6 +45,11 @@ const realApi = {
   history: () => call("GET", "history"),
   restore: (key) => call("POST", "restore", { key }),
   changePassword: (current, next) => call("POST", "password", { current, next }),
+  backupStatus: () => call("GET", "backup"),
+  createBackupKey: () => call("POST", "backup/key", {}),
+  deleteBackupKey: () => call("DELETE", "backup/key"),
+  async backupList() { return (await raw("/api/backup/list")).text(); },
+  async backupItem(url) { return new Uint8Array(await (await raw(url)).arrayBuffer()); },
   siteUrl: (path) => path,
   logoutUrl: "/admin/logout",
 };
@@ -43,6 +59,7 @@ function demoApi() {
   let state = null;
   const files = [];
   const backups = [];
+  let demoKey = null;
   const ready = fetch(window.SB_DEMO_CONTENT || "demo-content.json").then((r) => r.json()).then((d) => {
     state = { data: d, version: 1, savedAt: new Date().toISOString() };
   });
@@ -72,6 +89,18 @@ function demoApi() {
       return this.saveContent(b.data);
     },
     async changePassword() { await wait(); return { ok: true }; },
+    async backupStatus() { await wait(100); return { key: demoKey ? { created: demoKey } : null, lastFinished: null, lastStarted: null }; },
+    async createBackupKey() { await wait(); demoKey = new Date().toISOString(); return { key: "sbk_PRACTICE-ONLY-this-is-not-a-real-key" }; },
+    async deleteBackupKey() { await wait(); demoKey = null; return { ok: true }; },
+    async backupList() {
+      await ready;
+      return "# sarahs-books backup list 1\nreadme\t-\tREADME.txt\tdemo:readme\ncontent\t-\tcontent.json\tdemo:content\n";
+    },
+    async backupItem(url) {
+      const enc = new TextEncoder();
+      if (url === "demo:content") return enc.encode(JSON.stringify(state, null, 2));
+      return enc.encode("Practice backup from the preview. A real backup also has files/, assets/ and history/.\n");
+    },
     siteUrl: (path) => (path === "/" ? "index.html" : path.replace(/^\//, "")),
     logoutUrl: "admin-login.html",
   };

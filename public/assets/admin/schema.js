@@ -198,6 +198,7 @@ export const SECTIONS = [
   },
   { id: "files", label: "Pictures & files", kind: "files" },
   { id: "history", label: "Undo & history", kind: "history" },
+  { id: "backups", label: "Backups", kind: "backups" },
   { id: "account", label: "Password", kind: "account" },
 ];
 

@@ -3,6 +3,7 @@ import { SECTIONS, BUILT_IN_PICTURES } from "./schema.js";
 import { createRichEditor } from "./editor.js";
 import { api } from "./api.js";
 import { assetUrl } from "./markdown.js";
+import { tarGz } from "./tar.js";
 
 const app = document.getElementById("app");
 const state = {
@@ -456,6 +457,113 @@ function historySection() {
   return wrap;
 }
 
+function sizeText(bytes) {
+  const n = Number(bytes) || 0;
+  return n >= 1048576 ? `${(n / 1048576).toFixed(1)} MB` : `${Math.max(1, Math.round(n / 1024))} KB`;
+}
+
+function backupsSection() {
+  const wrap = h("div", { class: "backups" }, h("p", {}, "Loading…"));
+  let newKey = "";
+
+  async function load() {
+    let st;
+    try { st = await api.backupStatus(); } catch (err) { wrap.replaceChildren(h("p", { class: "error" }, err.message)); return; }
+    draw(st);
+  }
+
+  function lastRunText(st) {
+    if (!st.lastFinished) {
+      return h("p", { class: "backup-state warn" }, st.lastStarted
+        ? `A backup started ${when(st.lastStarted)} but hasn’t finished. Check the NAS.`
+        : "No automatic backup has finished yet.");
+    }
+    const ageDays = (Date.now() - Date.parse(st.lastFinished)) / 86400000;
+    const failedSince = st.lastStarted && Date.parse(st.lastStarted) > Date.parse(st.lastFinished) + 60 * 60 * 1000;
+    const msg = `Last backup to your NAS: ${when(st.lastFinished)} (${st.lastFiles ?? "?"} items, ${sizeText(st.lastBytes)}).`;
+    if (failedSince) return h("p", { class: "backup-state warn" }, msg + ` A newer one started ${when(st.lastStarted)} but didn’t finish.`);
+    if (ageDays > 3) return h("p", { class: "backup-state warn" }, msg + " That’s more than 3 days ago: check the NAS.");
+    return h("p", { class: "backup-state ok" }, msg);
+  }
+
+  function keyPart(st) {
+    const status = h("p", { class: "pic-status", "aria-live": "polite" });
+    const make = async () => {
+      try { newKey = (await api.createBackupKey()).key; await load(); } catch (err) { status.textContent = err.message; }
+    };
+    const parts = [];
+    if (newKey) {
+      const id = nextId("key");
+      const input = h("input", { id, type: "text", readonly: true, value: newKey, class: "key-input", onfocus: (e) => e.target.select() });
+      parts.push(h("div", { class: "key-box" },
+        h("label", { for: id, class: "field-label" }, "Your new backup key (shown only this once)"),
+        h("div", { class: "key-row" }, input,
+          h("button", { type: "button", class: "btn btn-small btn-primary", onclick: async (e) => {
+            try { await navigator.clipboard.writeText(newKey); e.target.textContent = "Copied!"; } catch { input.select(); e.target.textContent = "Press Ctrl+C to copy"; }
+          } }, "Copy")),
+        h("p", { class: "help" }, "Paste it into the NAS settings file (sarahs-books-backup.conf) after BACKUP_KEY=. If it gets lost, just create a new one here.")));
+    }
+    if (st.key) {
+      parts.push(h("p", {}, `Automatic backups are on. The backup key was created ${when(st.key.created)}.`),
+        h("div", { class: "pic-actions" },
+          confirmButton("Replace the key", "Click again: the NAS will need the new key", make, "btn btn-small"),
+          confirmButton("Turn off automatic backups", "Click again to turn off", async () => {
+            try { await api.deleteBackupKey(); newKey = ""; await load(); } catch (err) { status.textContent = err.message; }
+          })));
+    } else {
+      parts.push(h("p", {}, "Automatic backups are off. Create a backup key and put it in the NAS settings to turn them on."),
+        h("button", { type: "button", class: "btn btn-primary", onclick: make }, "Create a backup key"));
+    }
+    parts.push(status);
+    return parts;
+  }
+
+  function downloadPart() {
+    const status = h("p", { class: "pic-status", "aria-live": "polite" });
+    const btn = h("button", { type: "button", class: "btn btn-primary", onclick: async () => {
+      btn.disabled = true;
+      try {
+        const lines = (await api.backupList()).split("\n").filter((l) => l && !l.startsWith("#"));
+        const entries = [];
+        for (let i = 0; i < lines.length; i++) {
+          const [, , path, url] = lines[i].split("\t");
+          status.textContent = `Collecting ${i + 1} of ${lines.length}: ${path}`;
+          entries.push({ path, data: await api.backupItem(url) });
+        }
+        status.textContent = "Packing…";
+        const blob = await tarGz(entries);
+        const d = new Date();
+        const p2 = (n) => String(n).padStart(2, "0");
+        const name = `sarahs-books-${d.getFullYear()}-${p2(d.getMonth() + 1)}-${p2(d.getDate())}_${p2(d.getHours())}${p2(d.getMinutes())}${p2(d.getSeconds())}.tar.gz`;
+        const a = h("a", { href: URL.createObjectURL(blob), download: name });
+        document.body.append(a);
+        a.click();
+        a.remove();
+        status.textContent = api.demo
+          ? `Practice only: the real admin saves ${name} (${sizeText(blob.size)}) to your computer.`
+          : `Saved ${name} (${sizeText(blob.size)}, ${entries.length} items) to your Downloads.`;
+      } catch (err) {
+        status.textContent = err.message;
+      } finally {
+        btn.disabled = false;
+      }
+    } }, "Download a backup now");
+    return [h("p", {}, "Saves the same complete backup to this computer as one .tar.gz file."), btn, status];
+  }
+
+  function draw(st) {
+    wrap.replaceChildren(
+      h("p", {}, "A backup holds everything the website keeps: all the words and settings, every uploaded picture and file, and the earlier versions from Undo & history."),
+      h("div", { class: "backup-card" }, h("h2", {}, "Automatic backups to your NAS"), lastRunText(st), ...keyPart(st)),
+      h("div", { class: "backup-card" }, h("h2", {}, "Download a backup now"), ...downloadPart()),
+      h("p", { class: "help" }, "To put a backup back on the website, use the restore script on the NAS (see BACKUP.md)."),
+    );
+  }
+
+  load();
+  return wrap;
+}
+
 function accountSection() {
   const ids = { cur: nextId("pw"), next: nextId("pw"), again: nextId("pw") };
   const msg = h("p", { class: "pic-status", "aria-live": "polite" });
@@ -498,6 +606,7 @@ function renderMain(main) {
     parts.push(form);
   } else if (sec.kind === "files") parts.push(filesSection());
   else if (sec.kind === "history") parts.push(historySection());
+  else if (sec.kind === "backups") parts.push(backupsSection());
   else if (sec.kind === "account") parts.push(accountSection());
   main.replaceChildren(...parts);
   main.scrollTop = 0;

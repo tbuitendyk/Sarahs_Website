@@ -6,6 +6,7 @@
 //   /admin                                  login page, or the editor once logged in
 //   /admin/login, /admin/logout             log in / out
 //   /api/admin/...                          what the editor uses to load and save (login required)
+//   /api/backup/...                         full backups for the NAS (backup key or admin login; read only)
 //
 // Needs: a KV namespace bound as SITE, and an ADMIN_PASSWORD secret (see SETUP.md).
 
@@ -13,6 +14,7 @@ import { Site } from "../src/render.js";
 import * as store from "../src/store.js";
 import * as auth from "../src/auth.js";
 import { loginPage, adminPage, ADMIN_HEADERS } from "../src/admin-pages.js";
+import * as backup from "../src/backup.js";
 
 const json = (data, status = 200, extra = {}) =>
   new Response(JSON.stringify(data), {
@@ -40,6 +42,7 @@ export async function onRequest(context) {
       return new Response(null, { status: 303, headers: { location: "/admin", "set-cookie": auth.clearCookie() } });
     }
     if (path.startsWith("/api/admin/")) return await api(request, env, path.slice("/api/admin/".length));
+    if (path.startsWith("/api/backup/")) return await backupApi(request, env, path.slice("/api/backup/".length));
     if (path === "/subscribers/unlock") return await unlock(request, env);
     if (path.startsWith("/files/")) return await serveFile(request, env, path.slice("/files/".length));
 
@@ -139,6 +142,16 @@ async function api(request, env, route) {
     const res = await store.deleteFile(env, decodeURIComponent(route.slice(6)));
     return json(res, res.error ? 400 : 200);
   }
+  // Backups: status, the NAS's backup key, and putting uploads back under their own names.
+  if (route === "backup" && method === "GET") return json(await backup.status(env));
+  if (route === "backup/key" && method === "POST") return json({ key: await backup.createKey(env) });
+  if (route === "backup/key" && method === "DELETE") { await backup.deleteKey(env); return json({ ok: true }); }
+  if (route.startsWith("files/") && method === "PUT") {
+    const length = Number(request.headers.get("content-length") || 0);
+    if (length > store.MAX_UPLOAD_BYTES) return json({ error: "The file is too big (10 MB at most)." }, 413);
+    const res = await store.putFileNamed(env, decodeURIComponent(route.slice(6)), await request.arrayBuffer());
+    return json(res, res.error ? 400 : 200);
+  }
   if (route === "password" && method === "POST") {
     const body = await readJson(request);
     if (!(await auth.checkPassword(env, body?.current))) return json({ error: "Your current password isn’t right." }, 400);
@@ -156,6 +169,48 @@ async function readJson(request) {
   } catch {
     return null;
   }
+}
+
+// ---------------------------------------------------------------- full backups (read only)
+
+async function backupApi(request, env, route) {
+  if (request.method !== "GET") return json({ error: "Not allowed." }, 405);
+  const byKey = await backup.hasValidKey(request, env);
+  if (!byKey && !(await auth.isLoggedIn(request, env))) return json({ error: "Missing or wrong backup key." }, 401);
+  const origin = new URL(request.url).origin;
+  const private_ = { "cache-control": "no-store", "x-robots-tag": "noindex" };
+  const text = (body, type) => new Response(body, { headers: { "content-type": type, ...private_ } });
+
+  if (route === "list") {
+    const c = await backup.collect(env);
+    if (byKey) await backup.recordRun(env, request, { started: new Date().toISOString() });
+    return text(backup.listText(c.items), "text/plain; charset=utf-8");
+  }
+  if (route === "done") {
+    // The NAS script reports a finished backup, so the admin can show when the last one worked.
+    const q = new URL(request.url).searchParams;
+    if (byKey) await backup.recordRun(env, request, { finished: new Date().toISOString(), items: Number(q.get("items")) || 0, bytes: Number(q.get("bytes")) || 0 });
+    return json({ ok: true });
+  }
+  if (route === "manifest") return text(JSON.stringify(backup.manifest(await backup.collect(env), origin), null, 2), "application/json; charset=utf-8");
+  if (route === "readme") return text(backup.readme(origin), "text/plain; charset=utf-8");
+  if (route === "content") return text(JSON.stringify(await store.getContent(env), null, 2), "application/json; charset=utf-8");
+  if (route.startsWith("files/")) {
+    const file = await store.getFile(env, decodeURIComponent(route.slice(6)));
+    if (!file) return json({ error: "No such file." }, 404);
+    return new Response(file.value, { headers: { "content-type": file.metadata.type || "application/octet-stream", ...private_ } });
+  }
+  if (route.startsWith("history/")) {
+    const old = await store.getBackup(env, "backup:" + route.slice(8));
+    if (!old) return json({ error: "No such version." }, 404);
+    return text(JSON.stringify(old, null, 2), "application/json; charset=utf-8");
+  }
+  if (route.startsWith("assets/") && !route.includes("..") && env.ASSETS) {
+    const res = await env.ASSETS.fetch(new Request(new URL("/" + route, request.url)));
+    if (!res.ok) return json({ error: "No such file." }, 404);
+    return new Response(res.body, { headers: { "content-type": res.headers.get("content-type") || "application/octet-stream", ...private_ } });
+  }
+  return json({ error: "Unknown request." }, 404);
 }
 
 // ---------------------------------------------------------------- subscriber password
