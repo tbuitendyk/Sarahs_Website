@@ -1,5 +1,5 @@
 // Sarah's Books admin: edit everything on the website, then press Save.
-import { SECTIONS, BUILT_IN_PICTURES } from "./schema.js";
+import { SECTIONS, BUILT_IN_PICTURES, listChoices } from "./schema.js";
 import { createRichEditor } from "./editor.js";
 import { api } from "./api.js";
 import { assetUrl } from "./markdown.js";
@@ -110,7 +110,8 @@ function fieldRow(f, control, id, inline = false) {
 
 function renderField(obj, f, onAnyChange) {
   const id = nextId(f.key);
-  const set = (v) => { obj[f.key] = v; onAnyChange?.(f.key); changed(); };
+  const set = (v) => { obj[f.key] = v; f.onSet?.(obj, v, state.data); onAnyChange?.(f.key); changed(); };
+  const choices = typeof f.choices === "function" ? f.choices(state.data) : f.choices;
   const val = obj[f.key];
 
   switch (f.type) {
@@ -158,23 +159,25 @@ function renderField(obj, f, onAnyChange) {
     }
     case "select": {
       const sel = h("select", { id, onchange: (e) => set(e.target.value) });
-      const choices = [...f.choices];
-      if (val && !choices.some((c) => c.value === val)) choices.push({ value: val, label: val });
-      for (const c of choices) sel.append(h("option", { value: c.value, selected: c.value === val }, c.label));
-      if (!val) sel.value = choices[0].value;
+      const opts = [...choices];
+      if (val && !opts.some((c) => c.value === val)) opts.push({ value: val, label: val });
+      for (const c of opts) sel.append(h("option", { value: c.value, selected: c.value === val }, c.label));
+      if (!val) sel.value = opts[0].value;
       return fieldRow(f, sel, id);
     }
     case "multiselect": {
       const current = () => (Array.isArray(obj[f.key]) ? obj[f.key] : String(obj[f.key] || "").split(/\s*,\s*/).filter(Boolean));
       const box = h("div", { class: "checks", id, role: "group" });
-      for (const c of f.choices) {
+      for (const c of choices) {
         const cid = nextId("opt");
         const cb = h("input", {
           id: cid, type: "checkbox", checked: current().includes(c.value),
           onchange: (e) => {
             const now = current().filter((x) => x !== c.value);
             if (e.target.checked) now.push(c.value);
-            set(f.choices.map((x) => x.value).filter((x) => now.includes(x)));
+            // Keep ticks for lists not shown here (e.g. a page's list while that page is switched off).
+            const shown = choices.map((x) => x.value);
+            set([...shown.filter((x) => now.includes(x)), ...now.filter((x) => !shown.includes(x))]);
           },
         });
         box.append(h("label", { for: cid, class: "check" }, cb, " ", c.label));
@@ -323,8 +326,9 @@ function listEditor(arr, cfg, sectionCfg) {
     const out = [];
     if (sectionCfg?.id === "books") {
       const names = { "my-books": "My Books", anthologies: "Anthologies", "igs-files": "IGS: Files", subscribers: "Subscribers" };
+      for (const c of listChoices(state.data)) if (c.value.startsWith("page:")) names[c.value] = c.label;
       const lists = Array.isArray(item.show_on) ? item.show_on : String(item.show_on || "").split(/\s*,\s*/).filter(Boolean);
-      lists.forEach((l) => out.push(h("span", { class: "badge" }, names[l] || l)));
+      lists.filter((l) => !String(l).startsWith("page:") || names[l]).forEach((l) => out.push(h("span", { class: "badge" }, names[l] || l)));
       if (!lists.length) out.push(h("span", { class: "badge badge-muted" }, "Not on any list"));
       if (item.subscribers_only === true) out.push(h("span", { class: "badge badge-lock" }, "🔒 Subscribers only"));
     }
@@ -647,6 +651,9 @@ function renderApp() {
 }
 
 function upgradeContent(data) {
+  for (const p of Array.isArray(data?.pages) ? data.pages : []) {
+    if (p && typeof p === "object" && p.book_list === "own" && !p.list_id) p.list_id = p.slug || "";
+  }
   for (const b of Array.isArray(data?.books) ? data.books : []) {
     if (!b || typeof b !== "object") continue;
     if (!Array.isArray(b.downloads)) b.downloads = [];

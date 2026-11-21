@@ -10,6 +10,16 @@ const LIST_CHOICES = [
   { value: "subscribers", label: "Hidden subscriber page" },
 ];
 
+// The fixed lists, plus every page whose book list is "This page's own list".
+const slugify = (s) => String(s ?? "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "page";
+export const pageListValue = (p) => "page:" + slugify(p.list_id || p.slug || p.title);
+export function listChoices(data) {
+  const own = (Array.isArray(data?.pages) ? data.pages : [])
+    .filter((p) => p && typeof p === "object" && p.book_list === "own")
+    .map((p) => ({ value: pageListValue(p), label: `${p.title || "New page"} page` }));
+  return [...LIST_CHOICES, ...own];
+}
+
 const RICH_HELP = "“Heading” makes a section heading and “Big line” a large line of text. “Quote” makes a boxed note, or a Bible verse when its last line is the reference (like John 1:5).";
 
 export const BOOK_FIELDS = [
@@ -18,7 +28,7 @@ export const BOOK_FIELDS = [
   { key: "cover", label: "Cover picture", type: "image", help: "Leave empty for a dark “Cover coming soon” cover." },
   { key: "buy", label: "Buy link", type: "url", help: "Where people can buy the book (copy the address from Amazon, etc.). Leave it empty and the Buy the book button shows greyed out. Stories with download files show a Download button instead of Buy the book." },
   { key: "hide_buy", label: "Don’t show a Buy the book button for this book (for example, while it’s far from finished)", type: "boolean" },
-  { key: "show_on", label: "Show this book on", type: "multiselect", choices: LIST_CHOICES, help: "Books appear on each list in the order of this Books section. My Books is for books and anthologies, not short stories." },
+  { key: "show_on", label: "Show this book on", type: "multiselect", choices: listChoices, help: "Pages you give their own book list (under Pages) appear here too. Books appear on each list in the order of this Books section. My Books is for books and anthologies, not short stories." },
   { key: "card_text", label: "Text under the cover", type: "text", help: "Optional words shown under the cover on the book lists." },
   { key: "description", label: "The book’s own page", type: "rich", help: "Write anything here and the book gets its own page, and its Learn more button turns on. " + RICH_HELP },
   {
@@ -50,8 +60,17 @@ export const PAGE_FIELDS = [
   { key: "unlock_box", label: "Show the “Already a subscriber?” password box (it opens the subscriber stories page chosen under Newsletter)", type: "boolean", help: "Only people who signed up on that phone or computer see the box. Everyone else just sees the sign-up form. People who already entered the password see an “Open the subscriber stories” button instead." },
   {
     key: "book_list", label: "Book list on this page", type: "select",
-    choices: [{ value: "none", label: "No book list" }, ...LIST_CHOICES],
-    help: "Shows the books that have this list ticked under Books.",
+    choices: [{ value: "none", label: "No book list" }, ...LIST_CHOICES, { value: "own", label: "This page’s own list" }],
+    help: "Shows the books that have this list ticked under Books. Choose “This page’s own list” for a new page of your own (for example a series): then tick this page under each book’s “Show this book on”.",
+    // Give the page a lasting name for its list, so changing its web address later doesn't lose its books.
+    onSet: (page, value, data) => {
+      if (value !== "own" || page.list_id) return;
+      const taken = new Set((data?.pages || []).filter((p) => p !== page).map((p) => p.list_id || p.slug));
+      const base = slugify(page.slug || page.title);
+      let id = base;
+      for (let n = 2; taken.has(id); n++) id = `${base}-${n}`;
+      page.list_id = id;
+    },
   },
   { key: "book_list_heading", label: "Heading above the book list", type: "string" },
   { key: "hide_card_downloads", label: "No Download buttons under the covers on this page (readers download from each story’s own page)", type: "boolean" },

@@ -65,8 +65,12 @@ KV key `content` = `{ data, version, savedAt }`, where `data` has:
 - `contact`
 - `progress`: title, eyebrow and `items` (each with `show_bar` and `percent` 0–100)
 - `blog`: posts with title, date (yyyy-mm-dd) and body
-- `pages`: title, slug, menu (`main`, `under-my-books`, `no`), menu_position, body, book_list, hide_card_downloads, signup, unlock_box, subscribers_only, hidden…
-- `books`: title, id, label, cover, buy, hide_buy (no Buy the book button anywhere), show_on[], card_text, description, downloads[] (`{file, label}`; label defaults to PDF / Word document / EPUB from the file type), download_heading (default "Docs Download:"), download_note, subscribers_only, hidden…
+- `pages`: title, slug, menu (`main`, `under-my-books`, `no`), menu_position, body, book_list, list_id, hide_card_downloads, signup, unlock_box, subscribers_only, hidden…
+  - `book_list` is `none`, one of the fixed lists (`my-books`, `anthologies`, `igs-files`, `subscribers`), or `own`.
+    - `own` means the page has its own list, keyed `page:<list_id>`. `list_id` is set once, when `own` is first
+      chosen, so changing the page's slug doesn't lose its books.
+    - Books tick it in `show_on`, and the admin lists those pages as extra "Show this book on" choices (`listChoices()` in schema.js).
+- `books`: title, id, label, cover, buy, hide_buy (no Buy the book button anywhere), show_on[] (fixed list keys and/or `page:<list_id>`), card_text, description, downloads[] (`{file, label}`; label defaults to PDF / Word document / EPUB from the file type), download_heading (default "Docs Download:"), download_note, subscribers_only, hidden…
   - An older single `download` string is still read; the admin moves it into `downloads` when it loads.
   - With one file, a card's Download button downloads it; with several, it opens the book's page, which lists one Download button per file.
   - A page with `hide_card_downloads` leaves the Download button off its cards, so only Learn more shows. It's off by default and Sarah can switch it on per page; the book's own page keeps its Download buttons.
@@ -167,4 +171,7 @@ This writes the site plus `admin-login.html` and `admin.html` (a practice admin 
 - **The subscriber password isn't set yet.** Until Sarah sets it under Newsletter, subscriber pages say "This page isn't open yet". It goes in Kit's confirmation or welcome email.
 - **The contact form became an email link.** Sarah's original sentence ends "…send a message with the form below."; that part is left off because there's no form.
 - The **newsletter signup** and **reader reviews** sections still say "Coming soon…".
-- **IGS #3 and #4** are placeholders based on "Four stories".
+- **IGS #3 and #4** are placeholders based on "Four stories". In the starting content, IGS #2–#4 have
+  `hide_buy` on; IGS #1 keeps its greyed-out Buy the book button.
+- **Visitor statistics in the admin: proposed, not built.** The plan is a free Cloudflare D1 database, because KV's
+  1,000 writes a day is too few for counting visits. The user hasn't decided yet.

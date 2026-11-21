@@ -181,9 +181,19 @@ until a subscriber password is chosen.
   messages there the same as in Kit.
 - **Free plan limits:** about 100,000 page visits a day and 1,000 saves a day. That's far more than an author site needs.
 - **Undo:** every save keeps the previous version for 6 months. To undo, go to **Undo & history** in the admin.
-- **Forgotten password:** in the Cloudflare project, change the `ADMIN_PASSWORD` secret
-  (Settings → Variables and Secrets) and retry the deployment. If Sarah had changed the password
-  in the admin, that one wins. In that case, ask Claude to clear it, or delete the `auth:password`
-  entry in the `sarahs-books` KV namespace.
+- **The admin password.** The first one is the `ADMIN_PASSWORD` secret typed in at step 4.
+  - **To change it:** log in, open **Password** in the side menu, type the current password,
+    then the new one twice (at least 10 characters). It works straight away.
+    - That device stays logged in; any other phone or computer has to log in again.
+    - From then on, the old Cloudflare secret no longer opens the admin.
+  - **Staying logged in:** a phone or computer stays logged in for 30 days (or until **Log out**).
+  - **Wrong passwords:** after 10 wrong tries in 15 minutes, the admin makes you wait 15 minutes.
+- **Forgotten password:** whoever has the Cloudflare login can reset it. It doesn't need Claude or GitHub.
+  1. In Cloudflare, open **Storage & Databases → KV → `sarahs-books`**. Find the entry
+     **`auth:password`** and delete it. That removes the password chosen in the admin; nothing else changes.
+  2. The admin now opens with the `ADMIN_PASSWORD` secret again. If that one is forgotten too, open
+     **Workers & Pages → the project → Settings → Variables and Secrets** and edit `ADMIN_PASSWORD`.
+     Then open **Deployments** and choose **Retry deployment** on the latest one.
+  3. Log in, and choose a new password under **Password**.
 - **Changes to the design** (by Claude, in this repository) go live by themselves a minute or two
   after they're pushed to the production branch. Sarah's own edits in the admin are never affected by that.

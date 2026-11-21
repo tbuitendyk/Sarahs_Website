@@ -37,7 +37,11 @@ function asList(v) {
   if (Array.isArray(v)) return v;
   return String(v).split(/\s*,\s*/).filter(Boolean);
 }
+// A page with its own book list (book_list "own") is "page:<list_id>"; books tick it in show_on.
+const PAGE_LIST = /^page:[a-z0-9-]+$/;
+export const pageListKey = (pg) => "page:" + (slugify(text(pg.list_id) || text(pg.slug) || text(pg.title)));
 function listKey(v) {
+  if (PAGE_LIST.test(String(v ?? "").trim())) return String(v).trim();
   const want = squash(v);
   for (const [key, label] of Object.entries(BOOK_LISTS)) {
     if (want === squash(key) || want === squash(label)) return key;
@@ -604,7 +608,7 @@ ${indent(feed, 4)}
         current: pg.slug, section, description: text(pg.description), noindex: true });
     }
     const parts = [this.pageHero(pg.title, text(pg.eyebrow), text(pg.intro))];
-    const key = text(pg.book_list) ? listKey(pg.book_list) : null;
+    const key = squash(pg.book_list) === "own" ? pageListKey(pg) : text(pg.book_list) ? listKey(pg.book_list) : null;
     const bodyMd = text(pg.body);
     if (bodyMd || text(pg.photo)) {
       const content = markdown(bodyMd, "{P}");

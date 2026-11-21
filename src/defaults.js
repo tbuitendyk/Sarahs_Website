@@ -265,7 +265,7 @@ export default {
       "label": "IGS: Files",
       "cover": "",
       "buy": "",
-      "hide_buy": false,
+      "hide_buy": true,
       "show_on": [
         "igs-files"
       ],
@@ -283,7 +283,7 @@ export default {
       "label": "IGS: Files",
       "cover": "",
       "buy": "",
-      "hide_buy": false,
+      "hide_buy": true,
       "show_on": [
         "igs-files"
       ],
@@ -301,7 +301,7 @@ export default {
       "label": "IGS: Files",
       "cover": "",
       "buy": "",
-      "hide_buy": false,
+      "hide_buy": true,
       "show_on": [
         "igs-files"
       ],
